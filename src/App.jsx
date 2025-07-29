@@ -10,7 +10,7 @@ export default function App() {
     if (!input.trim()) return;
     setLoading(true);
     try {
-      const response = await axios.post("http://localhost:5000/generate-test-cases", { input });
+      const response = await axios.post("https://test-case-backend.onrender.com/generate-test-cases", { input });
       setOutput(response.data.output);
     } catch (error) {
       console.error("Error generating test cases:", error);
