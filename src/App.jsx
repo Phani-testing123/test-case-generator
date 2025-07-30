@@ -23,30 +23,15 @@ const App = () => {
       );
 
   const outputLines = response.data.output
-  .split('\n')
-  .map(line => line.trim())
-  .reduce((acc, line, index, arr) => {
-    const isNewTestCase = /^Scenario:/i.test(line) ||
-      /^(Positive|Negative|Edge)\s+Test\s+Case/i.test(line) ||
-      /^Test Case \d+:/i.test(line);
-
-    // Skip completely blank lines
-    if (line === '') return acc;
-
-    // Add spacing before new test cases (except first line)
-    if (isNewTestCase && acc.length > 0 && acc[acc.length - 1] !== '') {
-      acc.push('');
-    }
-
-    acc.push(line);
-    return acc;
-  }, [])
-  .filter((line, i, arr) => {
-    // Prevent multiple empty lines in a row
-    return !(line === '' && arr[i - 1] === '');
+  .split(/\r?\n/) // Handles both Unix & Windows line endings
+  .map(line => line.trim()) // Normalize spaces
+  .filter((line, index, arr) => {
+    // Remove empty lines and lines with just delimiters or artifacts
+    return line && !/^[-=]*$/.test(line);
   });
 
 setTestCases(outputLines);
+
 
     } catch (error) {
       console.error('Error:', error);
