@@ -24,13 +24,20 @@ const App = () => {
 
    const outputLines = response.data.output
   .split('\n')
-  .flatMap(line => 
-    line.trim().match(/^(\d+\.)|^(Positive|Negative|Edge) Test Case/i) 
-      ? [line.trim(), ''] 
-      : [line.trim()]
-  )
+  .reduce((acc, line) => {
+    const trimmedLine = line.trim();
+    if (
+      /^(\d+\.)/.test(trimmedLine) || 
+      /^(Positive|Negative|Edge) Test Case/i.test(trimmedLine) ||
+      /^Scenario:/i.test(trimmedLine)
+    ) {
+      acc.push('', trimmedLine); // Insert blank line before new scenario
+    } else {
+      acc.push(trimmedLine);
+    }
+    return acc;
+  }, [])
   .filter(Boolean);
-
 
      // setTestCases(outputLines);
     } catch (error) {
