@@ -67,15 +67,29 @@ const App = () => {
     setError(null);
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
-    const prompt = `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in Gherkin format. After generating all scenarios, add a final section under the heading "Coverage Summary:" that briefly explains the scope and focus of the generated tests.`;
+    
+    // ✅ UPDATED: Stricter prompts for both Gherkin and non-Gherkin formats
+    const prompt = showGherkin
+      ? `Please generate ${scenarioCount} BDD scenarios in Gherkin format based on this requirement: "${input}".
+      RULES FOR YOUR RESPONSE:
+      1. You MUST NOT include a "Feature:" line.
+      2. Each scenario MUST begin on a new line with the keyword "Scenario:".
+      3. You MUST NOT include any markdown formatting like code fences (\`\`\`) or separators (===).
+      4. ${personaText}`
+      : `${input}\n\n${personaText}Please generate ${scenarioCount} test cases.
+      RULES FOR EACH TEST CASE:
+      1. Start the title on a new line with a number and a period (e.g., "1. Test Case Title").
+      2. After the title, you MUST include a heading on a new line called "Test Steps:".
+      3. Under "Test Steps:", list all actions as a multi-step numbered list (1., 2., 3., etc.).
+      4. After all the steps, you MUST include a separate heading on a new line called "Expected Result:".`;
 
     try {
       const apiCalls = [];
       if (selectedModels.openai) {
-        apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-test-cases', { input: prompt }));
+        apiCalls.push(axios.post('[https://test-case-backend.onrender.com/generate-test-cases](https://test-case-backend.onrender.com/generate-test-cases)', { input: prompt }));
       }
       if (selectedModels.gemini) {
-        apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-gemini-test-cases', { input: prompt }));
+        apiCalls.push(axios.post('[https://test-case-backend.onrender.com/generate-gemini-test-cases](https://test-case-backend.onrender.com/generate-gemini-test-cases)', { input: prompt }));
       }
 
       const responses = await Promise.all(apiCalls);
@@ -85,11 +99,11 @@ const App = () => {
       let responseIndex = 0;
 
       if (selectedModels.openai) {
-        newOpenaiData = parseAIOutput(responses[responseIndex]?.data?.output);
+        newOpenaiData = parseAIOutput(responses[responseIndex]?.data?.output, showGherkin);
         responseIndex++;
       }
       if (selectedModels.gemini) {
-        newGeminiData = parseAIOutput(responses[responseIndex]?.data?.output);
+        newGeminiData = parseAIOutput(responses[responseIndex]?.data?.output, showGherkin);
       }
       
       setOpenaiCases(newOpenaiData.cases);
@@ -97,6 +111,13 @@ const App = () => {
       setOpenaiSummary(newOpenaiData.summary);
       setGeminiSummary(newGeminiData.summary);
       
+      const allNewCases = [...newOpenaiData.cases, ...newGeminiData.cases];
+      const initialExpansionState = allNewCases.reduce((acc, tc) => {
+        acc[tc.id] = true;
+        return acc;
+      }, {});
+      setExpandedIds(initialExpansionState);
+
       toast.success('Test cases generated!');
     } catch (err) {
       console.error('Error:', err);
@@ -104,16 +125,6 @@ const App = () => {
       toast.error('Generation failed.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCountChange = (e) => {
-    const count = Number(e.target.value);
-    setScenarioCount(count);
-    if (count < 5 || count > 12) {
-      setCountError('Count must be between 5 and 12.');
-    } else {
-      setCountError(null);
     }
   };
 
