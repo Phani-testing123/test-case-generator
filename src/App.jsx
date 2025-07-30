@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { exportExcel } from './utils/exportExcel';
-import logo from './assets/burger-king-logo.png';
+import burgerKingLogo from './assets/burger-king-logo.png';
+
+
 
 const App = () => {
   const [inputText, setInputText] = useState('');
