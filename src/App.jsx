@@ -22,24 +22,15 @@ const App = () => {
         }
       );
 
-   const outputLines = response.data.output
+  const outputLines = response.data.output
   .split('\n')
-  .reduce((acc, line) => {
-    const trimmedLine = line.trim();
-    if (
-      /^(\d+\.)/.test(trimmedLine) || 
-      /^(Positive|Negative|Edge) Test Case/i.test(trimmedLine) ||
-      /^Scenario:/i.test(trimmedLine)
-    ) {
-      acc.push('', trimmedLine); // Insert blank line before new scenario
-    } else {
-      acc.push(trimmedLine);
-    }
-    return acc;
-  }, [])
-  .filter(Boolean);
-
-     // setTestCases(outputLines);
+  .flatMap((line) =>
+    /^Scenario:/i.test(line.trim()) || /^(Positive|Negative|Edge) Test Case/i.test(line.trim())
+      ? ['', line]
+      : [line]
+  )
+  .filter((line) => line.trim() !== '');
+   setTestCases(outputLines);
     } catch (error) {
       console.error('Error:', error);
       setTestCases(['❌ Failed to generate test cases. Try again later.']);
