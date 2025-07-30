@@ -49,7 +49,6 @@ const App = () => {
     setError(null);
     setTestCases([]);
 
-    // --- NEW: Construct a more detailed prompt ---
     const selectedTypes = Object.entries(caseTypes)
       .filter(([, isSelected]) => isSelected)
       .map(([type]) => type)
@@ -65,9 +64,9 @@ const App = () => {
         { input: prompt }
       );
 
-      // --- NEW: Parse response into structured objects ---
       const output = response.data.output;
-      const scenarios = output.split(/Scenario:|^\d+\.\s*(Positive|Negative|Edge)\s+Test\s+Case:/im).filter(s => s.trim() !== '');
+      // ✅ FIXED LINE: Added 's &&' to prevent trim on undefined
+      const scenarios = output.split(/Scenario:|^\d+\.\s*(Positive|Negative|Edge)\s+Test\s+Case:/im).filter(s => s && s.trim() !== '');
       
       const structuredTestCases = scenarios.map(scenarioText => {
         const lines = scenarioText.trim().split(/\r?\n/).map(l => l.trim());
