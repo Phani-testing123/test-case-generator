@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { exportExcel } from './utils/exportExcel';
 import './index.css';
 import logo from './assets/burger-king-logo.png';
 import { saveAs } from 'file-saver';
@@ -105,5 +106,13 @@ export default function App() {
         </pre>
       </div>
     </div>
+    {testCases.length > 0 && (
+  <button
+    onClick={() => exportExcel(testCases)}
+    className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded shadow-md mt-4"
+  >
+    📤 Export to Excel
+  </button>
+)}
   );
 }
