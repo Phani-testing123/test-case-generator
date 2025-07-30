@@ -13,11 +13,14 @@ const App = () => {
   const [error, setError] = useState(null);
   const [openaiCases, setOpenaiCases] = useState([]);
   const [geminiCases, setGeminiCases] = useState([]);
+  const [claudeCases, setClaudeCases] = useState([]); // ✅ NEW: State for Claude
   const [openaiSummary, setOpenaiSummary] = useState('');
   const [geminiSummary, setGeminiSummary] = useState('');
+  const [claudeSummary, setClaudeSummary] = useState(''); // ✅ NEW: State for Claude
   const [scenarioCount, setScenarioCount] = useState(5);
   const [loginCredentials, setLoginCredentials] = useState('');
-  const [selectedModels, setSelectedModels] = useState({ openai: true, gemini: false });
+  // ✅ UPDATED: Added Claude to model selection
+  const [selectedModels, setSelectedModels] = useState({ openai: true, gemini: false, claude: false });
   const [countError, setCountError] = useState(null);
 
   // --- PARSING FUNCTION (GHERKIN ONLY) ---
@@ -59,19 +62,19 @@ const App = () => {
       toast.error('Please resolve errors before generating.');
       return;
     }
-    if (!selectedModels.openai && !selectedModels.gemini) {
+    if (!selectedModels.openai && !selectedModels.gemini && !selectedModels.claude) {
       toast.error('Please select at least one AI model.');
       return;
     }
     setLoading(true);
-    setError(null); // Clear previous errors
+    setError(null);
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
     const prompt = `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in Gherkin format. After generating all scenarios, add a final section under the heading "Coverage Summary:" that briefly explains the scope and focus of the generated tests.`;
 
     try {
       const apiCalls = [];
-      const modelNames = []; // Keep track of which model corresponds to which call
+      const modelNames = []; 
 
       if (selectedModels.openai) {
         apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-test-cases', { input: prompt }));
@@ -81,26 +84,27 @@ const App = () => {
         apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-gemini-test-cases', { input: prompt }));
         modelNames.push('Gemini');
       }
+      // ✅ NEW: Add Claude to the API calls
+      if (selectedModels.claude) {
+        apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-claude-test-cases', { input: prompt }));
+        modelNames.push('Claude');
+      }
 
-      // ✅ UPDATED: Use Promise.allSettled to handle individual API failures
       const results = await Promise.allSettled(apiCalls);
 
       let newOpenaiData = { cases: [], summary: '' };
       let newGeminiData = { cases: [], summary: '' };
+      let newClaudeData = { cases: [], summary: '' };
       const failedModels = [];
 
       results.forEach((result, index) => {
         const modelName = modelNames[index];
         if (result.status === 'fulfilled') {
-          // Success
           const parsedData = parseAIOutput(result.value?.data?.output);
-          if (modelName === 'OpenAI') {
-            newOpenaiData = parsedData;
-          } else if (modelName === 'Gemini') {
-            newGeminiData = parsedData;
-          }
+          if (modelName === 'OpenAI') newOpenaiData = parsedData;
+          else if (modelName === 'Gemini') newGeminiData = parsedData;
+          else if (modelName === 'Claude') newClaudeData = parsedData;
         } else {
-          // Failure
           console.error(`Error from ${modelName}:`, result.reason);
           failedModels.push(modelName);
         }
@@ -108,10 +112,11 @@ const App = () => {
 
       setOpenaiCases(newOpenaiData.cases);
       setGeminiCases(newGeminiData.cases);
+      setClaudeCases(newClaudeData.cases);
       setOpenaiSummary(newOpenaiData.summary);
       setGeminiSummary(newGeminiData.summary);
+      setClaudeSummary(newClaudeData.summary);
 
-      // ✅ UPDATED: If any models failed, set a specific error message
       if (failedModels.length > 0) {
         const errorMessage = `❌ ${failedModels.join(' & ')} failed to generate results. Please try unchecking it or check your backend service.`;
         setError(errorMessage);
@@ -121,7 +126,6 @@ const App = () => {
       }
       
     } catch (err) {
-      // This catch block is now a fallback for unexpected network errors
       console.error('Generic Error:', err);
       setError('❌ An unexpected network error occurred. Please check the console.');
       toast.error('An unexpected network error occurred.');
@@ -130,6 +134,7 @@ const App = () => {
     }
   };
 
+  // ✅ RESTORED: Function to handle case count validation
   const handleCountChange = (e) => {
     const count = Number(e.target.value);
     setScenarioCount(count);
@@ -149,9 +154,10 @@ const App = () => {
 
   const openaiFormattedText = useMemo(() => formatCasesForDisplay(openaiCases), [openaiCases]);
   const geminiFormattedText = useMemo(() => formatCasesForDisplay(geminiCases), [geminiCases]);
+  const claudeFormattedText = useMemo(() => formatCasesForDisplay(claudeCases), [claudeCases]);
 
   const exportToExcel = () => {
-    const allCases = [...openaiCases, ...geminiCases];
+    const allCases = [...openaiCases, ...geminiCases, ...claudeCases];
     if (allCases.length === 0) {
       toast.error('No results to export.');
       return;
@@ -171,7 +177,7 @@ const App = () => {
   };
 
   const copyToClipboard = () => {
-    const textToCopy = [openaiFormattedText, geminiFormattedText].filter(Boolean).join('\n\n');
+    const textToCopy = [openaiFormattedText, geminiFormattedText, claudeFormattedText].filter(Boolean).join('\n\n');
     if (!textToCopy) {
       toast.error('No results to copy.');
       return;
@@ -184,15 +190,17 @@ const App = () => {
     setInput('');
     setOpenaiCases([]);
     setGeminiCases([]);
+    setClaudeCases([]);
     setOpenaiSummary('');
     setGeminiSummary('');
+    setClaudeSummary('');
     setError(null);
     toast('Cleared all data.', { icon: '🗑️' });
   };
   
   // --- SUB-COMPONENT FOR RENDERING RESULTS ---
   const ResultsColumn = ({ title, formattedText, summary }) => {
-    const modelKey = title.toLowerCase().includes('openai') ? 'openai' : 'gemini';
+    const modelKey = title.toLowerCase().includes('openai') ? 'openai' : title.toLowerCase().includes('gemini') ? 'gemini' : 'claude';
     if (!selectedModels[modelKey]) return null;
 
     if (!formattedText && !summary && !loading) {
@@ -223,10 +231,10 @@ const App = () => {
     <>
       <Toaster position="top-center" reverseOrder={false} />
       <div className="min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="max-w-screen-xl mx-auto space-y-8">
           <div className="flex items-center justify-center gap-4">
             <img src="/bk-icon.png" alt="App Logo" className="h-12 w-12" />
-            <h1 className="text-3xl sm:text-4xl font-bold text-center">AI Test Case Generator Gherkins Only</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-center">AI Test Case Generator Gherkin Only</h1>
           </div>
 
           <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-4">
@@ -237,7 +245,7 @@ const App = () => {
               onChange={(e) => setInput(e.target.value)}
             />
             
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Login Credentials</label>
                 <input type="text" value={loginCredentials} onChange={e => setLoginCredentials(e.target.value)} placeholder="e.g., testuser@example.com" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
@@ -247,9 +255,9 @@ const App = () => {
                  <input type="number" value={scenarioCount} onChange={handleCountChange} min="5" max="12" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
                  {countError && <p className="text-red-500 text-xs mt-1">{countError}</p>}
               </div>
-              <div>
+              <div className="lg:col-span-2">
                 <label className="block text-sm font-medium text-gray-400 mb-1">AI Model(s)</label>
-                <div className="flex items-center justify-around bg-gray-700 p-2 rounded-md text-sm">
+                <div className="flex items-center justify-around bg-gray-700 p-2 rounded-md text-sm h-full">
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input type="checkbox" checked={selectedModels.openai} onChange={() => setSelectedModels(prev => ({...prev, openai: !prev.openai}))} className="accent-blue-500 h-4 w-4" />
                       OpenAI
@@ -257,6 +265,11 @@ const App = () => {
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input type="checkbox" checked={selectedModels.gemini} onChange={() => setSelectedModels(prev => ({...prev, gemini: !prev.gemini}))} className="accent-blue-500 h-4 w-4" />
                       Gemini
+                    </label>
+                    {/* ✅ NEW: Claude checkbox */}
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="checkbox" checked={selectedModels.claude} onChange={() => setSelectedModels(prev => ({...prev, claude: !prev.claude}))} className="accent-blue-500 h-4 w-4" />
+                      Claude
                     </label>
                 </div>
               </div>
@@ -275,15 +288,15 @@ const App = () => {
           <div>
             {loading && <div className="text-center p-6"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-400 mx-auto"></div><p className='mt-3'>AI is thinking...</p></div>}
             {error && <div className="bg-red-900/50 text-red-300 p-4 rounded-lg text-center border border-red-700">{error}</div>}
-            {!loading && !error && openaiCases.length === 0 && geminiCases.length === 0 && <div className="text-center p-6 text-gray-500 border-2 border-dashed border-gray-700 rounded-lg">Results will appear here.</div>}
+            {!loading && !error && openaiCases.length === 0 && geminiCases.length === 0 && claudeCases.length === 0 && <div className="text-center p-6 text-gray-500 border-2 border-dashed border-gray-700 rounded-lg">Results will appear here.</div>}
             
-            {(openaiCases.length > 0 || geminiCases.length > 0) && (
+            {(openaiCases.length > 0 || geminiCases.length > 0 || claudeCases.length > 0) && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center pt-2">
                     <h2 className='text-lg font-semibold text-green-400'>✅ Consolidated Results</h2>
                     <div className='flex gap-3'>
-                        <button onClick={copyToClipboard} className="bg-gray-600 hover:bg-gray-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={openaiCases.length === 0 && geminiCases.length === 0}>📋 Copy</button>
-                        <button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={openaiCases.length === 0 && geminiCases.length === 0}>📤 Export Excel</button>
+                        <button onClick={copyToClipboard} className="bg-gray-600 hover:bg-gray-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={openaiCases.length === 0 && geminiCases.length === 0 && claudeCases.length === 0}>📋 Copy</button>
+                        <button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={openaiCases.length === 0 && geminiCases.length === 0 && claudeCases.length === 0}>📤 Export Excel</button>
                     </div>
                 </div>
 
@@ -291,9 +304,11 @@ const App = () => {
                   ⚠️ AI can make mistakes. Please review with human intelligence.
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* ✅ UPDATED: Grid now supports up to three columns */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <ResultsColumn title="OpenAI Results" formattedText={openaiFormattedText} summary={openaiSummary} />
                     <ResultsColumn title="Gemini Results" formattedText={geminiFormattedText} summary={geminiSummary} />
+                    <ResultsColumn title="Claude Results" formattedText={claudeFormattedText} summary={claudeSummary} />
                 </div>
               </div>
             )}
