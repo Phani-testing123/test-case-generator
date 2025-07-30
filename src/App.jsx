@@ -23,14 +23,24 @@ const App = () => {
       );
 
   const outputLines = response.data.output
-  .split(/\r?\n/) // Handles both Unix & Windows line endings
-  .map(line => line.trim()) // Normalize spaces
-  .filter((line, index, arr) => {
-    // Remove empty lines and lines with just delimiters or artifacts
-    return line && !/^[-=]*$/.test(line);
-  });
+  .split(/\r?\n/)
+  .map(line => line.trim())
+  .reduce((acc, line) => {
+    const isTestCaseHeader = /^\d+\.\s*[^:]+:/i.test(line);
+
+    // Insert a blank line before each new test case (except the first)
+    if (isTestCaseHeader && acc.length > 0 && acc[acc.length - 1] !== '') {
+      acc.push('');
+    }
+
+    // Push non-empty lines and preserve formatting
+    if (line !== '') acc.push(line);
+
+    return acc;
+  }, []);
 
 setTestCases(outputLines);
+
 
 
     } catch (error) {
