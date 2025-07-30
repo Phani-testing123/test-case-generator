@@ -82,8 +82,14 @@ const App = () => {
 
             <div className="bg-gray-800 rounded-lg p-4 overflow-auto max-h-[400px] whitespace-pre-wrap text-sm border border-gray-700">
               {testCases.map((line, index) => (
-                <div key={index}>{line}</div>
-              ))}
+  <div
+    key={index}
+    className={line.trim().toLowerCase().startsWith('scenario:') ? 'mt-4 font-semibold' : ''}
+  >
+    {line}
+  </div>
+))}
+
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
