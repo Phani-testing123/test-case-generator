@@ -22,26 +22,26 @@ const App = () => {
         }
       );
 
-  const outputLines = response.data.output
-  .split(/\r?\n/)
+const outputLines = response.data.output
+  .split(/\r?\n/) // Handles Windows/Unix line endings
   .map(line => line.trim())
   .reduce((acc, line) => {
-    const isTestCaseHeader = /^\d+\.\s*[^:]+:/i.test(line);
+    const isNewTestCaseHeader =
+      /^\d+\.\s*[^:]+:/i.test(line) || // Matches '1. Positive Test Case - Something:'
+      /^Test Case \d+:/i.test(line) || // Matches 'Test Case 2:'
+      /^(Positive|Negative|Edge)\s+Test\s+Case/i.test(line); // Matches other variations
 
-    // Insert a blank line before each new test case (except the first)
-    if (isTestCaseHeader && acc.length > 0 && acc[acc.length - 1] !== '') {
+    // Add a blank line before a new test case, except at the start
+    if (isNewTestCaseHeader && acc.length > 0 && acc[acc.length - 1] !== '') {
       acc.push('');
     }
 
-    // Push non-empty lines and preserve formatting
-    if (line !== '') acc.push(line);
+    if (line !== '') acc.push(line); // Preserve non-empty lines
 
     return acc;
   }, []);
 
 setTestCases(outputLines);
-
-
 
     } catch (error) {
       console.error('Error:', error);
