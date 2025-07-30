@@ -7,7 +7,7 @@ const App = () => {
   const [testCases, setTestCases] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showGherkin, setShowGherkin] = useState(true);
-  const [scenarioCount, setScenarioCount] = useState(5); // Default to 5 scenarios
+  //const [scenarioCount, setScenarioCount] = useState(5); // Default to 5 scenarios
 
 
   const handleGenerate = async () => {
@@ -18,7 +18,7 @@ const App = () => {
       const response = await axios.post(
         'https://test-case-backend.onrender.com/generate-test-cases',
         {
-          input: `${input}\nPlease generate 5 ${showGherkin ? 'Gherkin format' : 'plain text'} test cases including positive, negative, and edge cases with detailed steps.`
+          input: `${input}\nPlease generate ${showGherkin ? 'Gherkin format' : 'Normal plain text'} test cases including positive, negative and edge cases with detailed steps.`
         }
       );
 
@@ -72,20 +72,6 @@ const App = () => {
           >
             {loading ? 'Generating...' : 'Generate Test Cases'}
           </button>
-
-           <div className="flex items-center gap-2 text-sm">
-    <label htmlFor="scenarioCount"># Scenarios</label>
-    <input
-      id="scenarioCount"
-      type="number"
-      min="1"
-      max="50"
-      value={scenarioCount}
-      onChange={(e) => setScenarioCount(e.target.value)}
-      className="text-black px-3 py-2 rounded-md w-24"
-      placeholder="e.g. 10"
-    />
-  </div>
 
           <div className="flex items-center gap-2 text-sm">
             <label htmlFor="toggleGherkin" className="whitespace-nowrap">Gherkin Format</label>
