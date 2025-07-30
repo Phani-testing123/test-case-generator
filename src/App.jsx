@@ -31,11 +31,20 @@ const App = () => {
   };
 
   const exportExcel = (data) => {
-    const ws = XLSX.utils.aoa_to_sheet(data.map(line => [line]));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'TestCases');
-    XLSX.writeFile(wb, 'generated_test_cases.xlsx');
-  };
+  const spacedData = [];
+
+  data.forEach((line, index) => {
+    if (line.trim().startsWith('Scenario:') && spacedData.length > 0) {
+      spacedData.push(['']); // Add empty row before new Scenario
+    }
+    spacedData.push([line]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(spacedData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'TestCases');
+  XLSX.writeFile(wb, 'generated_test_cases.xlsx');
+};
 
   return (
     <div className="min-h-screen bg-gray-900 text-white px-4 py-6 sm:px-8">
