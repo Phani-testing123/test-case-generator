@@ -18,7 +18,14 @@ const App = () => {
       const response = await axios.post(
         'https://test-case-backend.onrender.com/generate-test-cases',
         {
-          input: `${input}\nPlease generate ${showGherkin ? 'Gherkin format' : 'Normal plain text'} test cases including positive, negative and edge cases with detailed steps.`
+          input: `${input}
+Please generate ${showGherkin ? 'Gherkin format' : 'Normal plain text'} test cases including positive, negative, and edge cases with:
+- Title
+- Preconditions (if any)
+- Step-by-step actions
+- ✅ Expected Result for each case
+Add an empty line between each test case.`
+
         }
       );
 
@@ -100,10 +107,9 @@ const App = () => {
 
             <div className="bg-gray-800 rounded-lg p-4 overflow-auto max-h-[400px] whitespace-pre-wrap text-sm border border-gray-700">
               {testCases.map((line, index) => (
-  <div
-    key={index}
+   <div key={index} className="mb-2 whitespace-pre-wrap">
+    {line.trim() === '' ? <br /> : line}
     className={line.trim().toLowerCase().startsWith('scenario:') ? 'mt-4 font-semibold' : ''}
-  >
     {line}
   </div>
 ))}
