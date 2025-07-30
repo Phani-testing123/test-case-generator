@@ -44,15 +44,14 @@ const App = () => {
       const chunks = output.split(/Scenario:/im);
       testCaseChunks = chunks.slice(1).map(chunk => "Scenario:" + chunk);
     } else {
-      // ✅ NEW: Non-Gherkin is more reliably split by a numbered list pattern at the start of a line.
-      // This regex splits the string *before* "1. ", "2. ", etc., keeping the delimiter.
+      // ✅ FINAL FIX: More reliably split non-gherkin by finding numbered list patterns
       const firstTestIndex = output.search(/\d+\.\s/);
       const cleanOutput = firstTestIndex !== -1 ? output.substring(firstTestIndex) : output;
       testCaseChunks = cleanOutput.split(/\n(?=\d+\.\s)/).filter(s => s.trim());
     }
 
     if (testCaseChunks.length === 0 && output.trim()) {
-      // Fallback: If splitting fails, treat the whole output as one test case
+      // Fallback if splitting fails
       testCaseChunks.push(output);
     }
 
@@ -60,7 +59,6 @@ const App = () => {
       const lines = textChunk.trim().split('\n').map(l => l.trim());
       let title = lines.shift() || 'Untitled';
       
-      // Clean up title for both formats
       title = title.replace(/^(Scenario:|Test Case:|\d+\.\s*)/i, '').trim();
       
       const remainingText = lines.join('\n');
@@ -83,7 +81,7 @@ const App = () => {
       return {
         id: generateId(),
         title: title,
-        lines: steps.filter(Boolean), // Remove any empty lines from steps
+        lines: steps.filter(Boolean),
         expectedResult: expectedResultText,
         isGherkin: isGherkin,
       };
@@ -217,7 +215,13 @@ const App = () => {
   // --- SUB-COMPONENT FOR RENDERING A SET OF TEST CASES ---
   const TestCaseColumn = ({ title, cases }) => {
     if (!cases || cases.length === 0) {
-      return null;
+        if (title === "OpenAI Results" && selectedModels.openai) {
+            return <div className='text-center text-gray-500 p-4 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg'>No results from OpenAI.</div>
+        }
+        if (title === "Gemini Results" && selectedModels.gemini) {
+            return <div className='text-center text-gray-500 p-4 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg'>No results from Gemini.</div>
+        }
+        return null;
     }
     return (
       <div className='space-y-4'>
