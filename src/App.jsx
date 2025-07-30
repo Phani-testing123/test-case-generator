@@ -13,13 +13,12 @@ const App = () => {
   const [error, setError] = useState(null);
   const [openaiCases, setOpenaiCases] = useState([]);
   const [geminiCases, setGeminiCases] = useState([]);
-  const [claudeCases, setClaudeCases] = useState([]); // ✅ NEW: State for Claude
+  const [claudeCases, setClaudeCases] = useState([]);
   const [openaiSummary, setOpenaiSummary] = useState('');
   const [geminiSummary, setGeminiSummary] = useState('');
-  const [claudeSummary, setClaudeSummary] = useState(''); // ✅ NEW: State for Claude
+  const [claudeSummary, setClaudeSummary] = useState('');
   const [scenarioCount, setScenarioCount] = useState(5);
   const [loginCredentials, setLoginCredentials] = useState('');
-  // ✅ UPDATED: Added Claude to model selection
   const [selectedModels, setSelectedModels] = useState({ openai: true, gemini: false, claude: false });
   const [countError, setCountError] = useState(null);
 
@@ -84,7 +83,6 @@ const App = () => {
         apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-gemini-test-cases', { input: prompt }));
         modelNames.push('Gemini');
       }
-      // ✅ NEW: Add Claude to the API calls
       if (selectedModels.claude) {
         apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-claude-test-cases', { input: prompt }));
         modelNames.push('Claude');
@@ -134,7 +132,6 @@ const App = () => {
     }
   };
 
-  // ✅ RESTORED: Function to handle case count validation
   const handleCountChange = (e) => {
     const count = Number(e.target.value);
     setScenarioCount(count);
@@ -234,7 +231,7 @@ const App = () => {
         <div className="max-w-screen-xl mx-auto space-y-8">
           <div className="flex items-center justify-center gap-4">
             <img src="/bk-icon.png" alt="App Logo" className="h-12 w-12" />
-            <h1 className="text-3xl sm:text-4xl font-bold text-center">AI Test Case Generator Gherkin Only</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-center">AI Test Case Generator</h1>
           </div>
 
           <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-4">
@@ -245,7 +242,8 @@ const App = () => {
               onChange={(e) => setInput(e.target.value)}
             />
             
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+            {/* ✅ UPDATED: Grid classes for better alignment */}
+            <div className='grid grid-cols-1 md:grid-cols-3 gap-4 items-start'>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Login Credentials</label>
                 <input type="text" value={loginCredentials} onChange={e => setLoginCredentials(e.target.value)} placeholder="e.g., testuser@example.com" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
@@ -255,9 +253,9 @@ const App = () => {
                  <input type="number" value={scenarioCount} onChange={handleCountChange} min="5" max="12" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
                  {countError && <p className="text-red-500 text-xs mt-1">{countError}</p>}
               </div>
-              <div className="lg:col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">AI Model(s)</label>
-                <div className="flex items-center justify-around bg-gray-700 p-2 rounded-md text-sm h-full">
+                <div className="flex items-center justify-around bg-gray-700 p-2 rounded-md text-sm">
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input type="checkbox" checked={selectedModels.openai} onChange={() => setSelectedModels(prev => ({...prev, openai: !prev.openai}))} className="accent-blue-500 h-4 w-4" />
                       OpenAI
@@ -266,7 +264,6 @@ const App = () => {
                       <input type="checkbox" checked={selectedModels.gemini} onChange={() => setSelectedModels(prev => ({...prev, gemini: !prev.gemini}))} className="accent-blue-500 h-4 w-4" />
                       Gemini
                     </label>
-                    {/* ✅ NEW: Claude checkbox */}
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input type="checkbox" checked={selectedModels.claude} onChange={() => setSelectedModels(prev => ({...prev, claude: !prev.claude}))} className="accent-blue-500 h-4 w-4" />
                       Claude
@@ -295,8 +292,8 @@ const App = () => {
                 <div className="flex justify-between items-center pt-2">
                     <h2 className='text-lg font-semibold text-green-400'>✅ Consolidated Results</h2>
                     <div className='flex gap-3'>
-                        <button onClick={copyToClipboard} className="bg-gray-600 hover:bg-gray-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={openaiCases.length === 0 && geminiCases.length === 0 && claudeCases.length === 0}>📋 Copy</button>
-                        <button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={openaiCases.length === 0 && geminiCases.length === 0 && claudeCases.length === 0}>📤 Export Excel</button>
+                        <button onClick={copyToClipboard} className="bg-gray-600 hover:bg-gray-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={!openaiCases.length && !geminiCases.length && !claudeCases.length}>📋 Copy</button>
+                        <button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={!openaiCases.length && !geminiCases.length && !claudeCases.length}>📤 Export Excel</button>
                     </div>
                 </div>
 
@@ -304,7 +301,6 @@ const App = () => {
                   ⚠️ AI can make mistakes. Please review with human intelligence.
                 </div>
                 
-                {/* ✅ UPDATED: Grid now supports up to three columns */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <ResultsColumn title="OpenAI Results" formattedText={openaiFormattedText} summary={openaiSummary} />
                     <ResultsColumn title="Gemini Results" formattedText={geminiFormattedText} summary={geminiSummary} />
