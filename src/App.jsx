@@ -156,7 +156,7 @@ const App = () => {
           {/* Header */}
           <div className="flex items-center justify-center gap-4">
             <img src="/bk-icon.png" alt="App Logo" className="h-12 w-12" />
-            <h1 className="text-3xl sm:text-4xl font-bold text-center">Manual Tester's Co-Pilot</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-center">Test case Generator</h1>
           </div>
 
           {/* Input & Controls */}
