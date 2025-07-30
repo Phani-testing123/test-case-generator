@@ -45,22 +45,51 @@ const App = () => {
     setError(null);
 
     const personaText = userPersona.trim() ? `For a user persona of "${userPersona.trim()}", ` : '';
-    // ✅ FINAL PROMPT: Asks for all combinations by default for better results.
-    const prompt = `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in ${showGherkin ? 'Gherkin format' : 'plain text format'}. Generate a comprehensive set of test cases covering all possible combinations, including positive, negative, and edge-case scenarios. Ensure each test case has detailed steps.`;
+    const prompt = showGherkin
+      ? `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in Gherkin format. Generate a comprehensive set of test cases covering all possible combinations, including positive, negative, and edge-case scenarios.`
+      : `${input}\n\n${personaText}Please generate ${scenarioCount} test cases. For each test case, you MUST provide a 'Test Steps' section and a separate 'Expected Result' section. Start each test case with a clear title like 'Test Case: [Name of Test Case]'`;
 
     try {
       const response = await axios.post('https://test-case-backend.onrender.com/generate-test-cases', { input: prompt });
       const output = response.data.output;
-      const scenarios = output.split(/Scenario:|^\d+\.\s*(Positive|Negative|Edge)\s+Test\s+Case:/im).filter(s => s && s.trim() !== '');
+      
+      // ✅ FINAL PARSING LOGIC: Robustly splits test cases for both formats.
+      const scenarios = [];
+      // Split by the keywords but keep them in the array to act as titles
+      const chunks = output.split(/(Scenario:|Test Case:)/im).filter(Boolean);
 
+      // Re-combine the delimiter (e.g., "Test Case:") with its content
+      for (let i = 0; i < chunks.length; i += 2) {
+          if (chunks[i+1]) {
+              scenarios.push(chunks[i] + chunks[i+1]);
+          }
+      }
+      
       const structuredTestCases = scenarios.map(scenarioText => {
         const lines = scenarioText.trim().split(/\r?\n/).map(l => l.trim());
         let rawTitle = lines.shift() || 'Untitled';
-        let cleanTitle = rawTitle.replace(/(Scenario:)?\s*\d+\.\s*Test\s+Case:\s*/i, '').trim();
+        let cleanTitle = rawTitle.replace(/(Scenario:|Test Case:)/i, '').trim();
+
+        let steps = [];
+        let expectedResult = '';
+        if (showGherkin) {
+            steps = lines;
+        } else {
+            const resultIndex = lines.findIndex(line => /expected result/i.test(line));
+            if (resultIndex !== -1) {
+                steps = lines.slice(0, resultIndex).filter(l => !/test steps/i.test(l));
+                expectedResult = lines.slice(resultIndex + 1).join('\n');
+            } else {
+                steps = lines;
+            }
+        }
+        
         return {
           id: generateId(),
           title: cleanTitle,
-          lines: lines,
+          lines: steps,
+          expectedResult: expectedResult,
+          isGherkin: showGherkin,
         };
       });
 
@@ -94,10 +123,11 @@ const App = () => {
     if (activeTestCases.length === 0) return;
     const dataForExport = activeTestCases.map(tc => ({
       'Test Case Title': tc.title,
-      'Steps': tc.lines.join('\n')
+      'Steps': tc.lines.join('\n'),
+      'Expected Result': tc.expectedResult || 'N/A'
     }));
     const ws = XLSX.utils.json_to_sheet(dataForExport);
-    ws['!cols'] = [{ wch: 60 }, { wch: 60 }];
+    ws['!cols'] = [{ wch: 60 }, { wch: 60 }, { wch: 60 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'TestCases');
     XLSX.writeFile(wb, 'generated_test_cases.xlsx');
@@ -106,7 +136,12 @@ const App = () => {
 
   const copyToClipboard = () => {
     if (activeTestCases.length === 0) return;
-    const textToCopy = activeTestCases.map(tc => `${tc.title}\n${tc.lines.join('\n')}`).join('\n\n=====================\n\n');
+    const textToCopy = activeTestCases.map(tc => {
+        const title = tc.isGherkin ? `Scenario: ${tc.title}` : `Test Case: ${tc.title}`;
+        const steps = tc.lines.join('\n');
+        const result = tc.expectedResult ? `\n\nExpected Result:\n${tc.expectedResult}` : '';
+        return `${title}\n${steps}${result}`;
+    }).join('\n\n=====================\n\n');
     navigator.clipboard.writeText(textToCopy);
     toast.success('Results copied!');
   };
@@ -139,7 +174,6 @@ const App = () => {
               onChange={(e) => setInput(e.target.value)}
             />
             
-            {/* ✅ UPDATED: Simplified grid to 2 columns */}
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Login Credentials (Optional)</label>
@@ -184,7 +218,6 @@ const App = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <h2 className='font-semibold text-green-400'>✅ Generated Test Cases (Run {activeRunIndex + 1})</h2>
-                    {/* ✅ UPDATED: Font size increased from text-xs to text-sm */}
                     <p className="text-sm text-yellow-400 mt-1">⚠️ AI can make mistakes. Please review with human intelligence.</p>
                   </div>
                   <div className='flex gap-3'>
@@ -202,10 +235,29 @@ const App = () => {
                       </div>
 
                       {expandedIds.includes(tc.id) && (
-                        <div className="px-4 pb-4 border-t border-gray-700">
-                          <div className="whitespace-pre-wrap text-sm text-gray-300 pt-3">
-                            {tc.lines.join('\n')}
-                          </div>
+                        <div className="px-4 pb-4 border-t border-gray-700 space-y-3 pt-3">
+                          {tc.isGherkin ? (
+                            <div className="whitespace-pre-wrap text-sm text-gray-300">
+                                {tc.lines.join('\n')}
+                            </div>
+                          ) : (
+                            <>
+                                <div className='space-y-1'>
+                                    <p className="font-semibold text-gray-400 text-sm">Test Steps:</p>
+                                    <div className="whitespace-pre-wrap text-sm text-gray-300 pl-4 border-l-2 border-gray-600">
+                                        {tc.lines.join('\n')}
+                                    </div>
+                                </div>
+                                {tc.expectedResult && (
+                                    <div className='space-y-1'>
+                                        <p className="font-semibold text-green-400 text-sm">Expected Result:</p>
+                                        <div className="whitespace-pre-wrap text-sm text-gray-300 pl-4 border-l-2 border-green-800">
+                                            {tc.expectedResult}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
