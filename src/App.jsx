@@ -64,50 +64,72 @@ const App = () => {
       return;
     }
     setLoading(true);
-    setError(null);
+    setError(null); // Clear previous errors
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
     const prompt = `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in Gherkin format. After generating all scenarios, add a final section under the heading "Coverage Summary:" that briefly explains the scope and focus of the generated tests.`;
 
     try {
       const apiCalls = [];
+      const modelNames = []; // Keep track of which model corresponds to which call
+
       if (selectedModels.openai) {
         apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-test-cases', { input: prompt }));
+        modelNames.push('OpenAI');
       }
       if (selectedModels.gemini) {
         apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-gemini-test-cases', { input: prompt }));
+        modelNames.push('Gemini');
       }
 
-      const responses = await Promise.all(apiCalls);
-      
+      // ✅ UPDATED: Use Promise.allSettled to handle individual API failures
+      const results = await Promise.allSettled(apiCalls);
+
       let newOpenaiData = { cases: [], summary: '' };
       let newGeminiData = { cases: [], summary: '' };
-      let responseIndex = 0;
+      const failedModels = [];
 
-      if (selectedModels.openai) {
-        newOpenaiData = parseAIOutput(responses[responseIndex]?.data?.output);
-        responseIndex++;
-      }
-      if (selectedModels.gemini) {
-        newGeminiData = parseAIOutput(responses[responseIndex]?.data?.output);
-      }
-      
+      results.forEach((result, index) => {
+        const modelName = modelNames[index];
+        if (result.status === 'fulfilled') {
+          // Success
+          const parsedData = parseAIOutput(result.value?.data?.output);
+          if (modelName === 'OpenAI') {
+            newOpenaiData = parsedData;
+          } else if (modelName === 'Gemini') {
+            newGeminiData = parsedData;
+          }
+        } else {
+          // Failure
+          console.error(`Error from ${modelName}:`, result.reason);
+          failedModels.push(modelName);
+        }
+      });
+
       setOpenaiCases(newOpenaiData.cases);
       setGeminiCases(newGeminiData.cases);
       setOpenaiSummary(newOpenaiData.summary);
       setGeminiSummary(newGeminiData.summary);
+
+      // ✅ UPDATED: If any models failed, set a specific error message
+      if (failedModels.length > 0) {
+        const errorMessage = `❌ ${failedModels.join(' & ')} failed to generate results. Please try unchecking it or check your backend service.`;
+        setError(errorMessage);
+        toast.error(`${failedModels.join(' & ')} failed to generate.`);
+      } else {
+        toast.success('Test cases generated!');
+      }
       
-      toast.success('Test cases generated!');
     } catch (err) {
-      console.error('Error:', err);
-      setError('❌ One or more AI models failed to generate. Check the console and your backend service.');
-      toast.error('Generation failed.');
+      // This catch block is now a fallback for unexpected network errors
+      console.error('Generic Error:', err);
+      setError('❌ An unexpected network error occurred. Please check the console.');
+      toast.error('An unexpected network error occurred.');
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ RESTORED: Function to handle case count validation
   const handleCountChange = (e) => {
     const count = Number(e.target.value);
     setScenarioCount(count);
@@ -125,8 +147,8 @@ const App = () => {
                 .join('\n\n=====================\n\n');
   };
 
-  const openaiFormattedText = formatCasesForDisplay(openaiCases);
-  const geminiFormattedText = formatCasesForDisplay(geminiCases);
+  const openaiFormattedText = useMemo(() => formatCasesForDisplay(openaiCases), [openaiCases]);
+  const geminiFormattedText = useMemo(() => formatCasesForDisplay(geminiCases), [geminiCases]);
 
   const exportToExcel = () => {
     const allCases = [...openaiCases, ...geminiCases];
@@ -173,9 +195,7 @@ const App = () => {
     const modelKey = title.toLowerCase().includes('openai') ? 'openai' : 'gemini';
     if (!selectedModels[modelKey]) return null;
 
-    const hasContent = formattedText || summary;
-
-    if (!hasContent && !loading) {
+    if (!formattedText && !summary && !loading) {
         return <div className='text-center text-gray-500 p-4 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg'>No results from {title.split(' ')[0]}.</div>
     }
 
