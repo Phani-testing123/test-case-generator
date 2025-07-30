@@ -22,11 +22,15 @@ const App = () => {
         }
       );
 
-    const outputLines = response.data.output
+   const outputLines = response.data.output
   .split('\n')
-  .flatMap(line => line.trim().match(/^(\d+\.)|^(Positive|Negative|Edge) Test Case:/i) ? [line, ''] : [line])
+  .flatMap(line => 
+    line.trim().match(/^(\d+\.)|^(Positive|Negative|Edge) Test Case/i) 
+      ? [line.trim(), ''] 
+      : [line.trim()]
+  )
   .filter(Boolean);
-setTestCases(outputLines);
+
 
      // setTestCases(outputLines);
     } catch (error) {
