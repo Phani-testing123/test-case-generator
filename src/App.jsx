@@ -42,16 +42,20 @@ const App = () => {
     if (isGherkin) {
       // Gherkin format is reliably split by the "Scenario:" keyword
       const chunks = output.split(/Scenario:/im);
+      // Skip the first element which is usually a "Feature" description or empty
       testCaseChunks = chunks.slice(1).map(chunk => "Scenario:" + chunk);
     } else {
-      // ✅ FINAL FIX: More reliably split non-gherkin by finding numbered list patterns
+      // ✅ FINAL FIX: This is a much more robust way to split non-Gherkin formats
+      // It looks for a number followed by a period at the start of a line to identify a new test case.
       const firstTestIndex = output.search(/\d+\.\s/);
+      // Discard any text before the first actual test case
       const cleanOutput = firstTestIndex !== -1 ? output.substring(firstTestIndex) : output;
+      // Split the string, keeping the numbered delimiter with each chunk
       testCaseChunks = cleanOutput.split(/\n(?=\d+\.\s)/).filter(s => s.trim());
     }
 
     if (testCaseChunks.length === 0 && output.trim()) {
-      // Fallback if splitting fails
+      // Fallback: If splitting still fails, treat the whole output as one test case to avoid empty results.
       testCaseChunks.push(output);
     }
 
@@ -59,6 +63,7 @@ const App = () => {
       const lines = textChunk.trim().split('\n').map(l => l.trim());
       let title = lines.shift() || 'Untitled';
       
+      // Clean up title for both formats to remove prefixes like "Scenario:", "Test Case:", or "1."
       title = title.replace(/^(Scenario:|Test Case:|\d+\.\s*)/i, '').trim();
       
       const remainingText = lines.join('\n');
@@ -67,12 +72,14 @@ const App = () => {
       let steps = [];
 
       if (!isGherkin) {
+        // Find "Expected Result:" to separate steps from the outcome
         const resultMatch = remainingText.match(/expected result:/i);
         if (resultMatch) {
             const resultIndex = resultMatch.index;
             stepsText = remainingText.substring(0, resultIndex);
             expectedResultText = remainingText.substring(resultIndex).replace(/expected result:/i, '').trim();
         }
+        // Clean up "Test Steps:" heading
         steps = stepsText.replace(/test steps:/i, '').trim().split('\n');
       } else {
         steps = remainingText.split('\n');
@@ -81,7 +88,7 @@ const App = () => {
       return {
         id: generateId(),
         title: title,
-        lines: steps.filter(Boolean),
+        lines: steps.filter(Boolean), // Remove any empty lines from steps
         expectedResult: expectedResultText,
         isGherkin: isGherkin,
       };
