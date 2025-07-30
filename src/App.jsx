@@ -109,9 +109,16 @@ const App = () => {
     setError(null);
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
+    
+    // ✅ UPDATED: A much stricter and more detailed prompt for non-Gherkin formats
     const prompt = showGherkin
       ? `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in Gherkin format. Generate a comprehensive set of test cases...`
-      : `${input}\n\n${personaText}Please generate ${scenarioCount} test cases. For each test case, start the title on a new line with a number and a period (e.g., '1. Test Case Title'). You MUST use the exact headings 'Test Steps:' and 'Expected Result:'.`;
+      : `${input}\n\n${personaText}Please generate ${scenarioCount} test cases.
+      RULES FOR EACH TEST CASE:
+      1. Start the title on a new line with a number and a period (e.g., "1. Test Case Title").
+      2. After the title, you MUST include a heading on a new line called "Test Steps:".
+      3. Under "Test Steps:", list all actions as a multi-step numbered list (1., 2., 3., etc.).
+      4. After all the steps, you MUST include a separate heading on a new line called "Expected Result:".`;
 
     try {
       const apiCalls = [];
