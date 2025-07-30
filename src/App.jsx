@@ -15,7 +15,6 @@ const App = () => {
   const [geminiCases, setGeminiCases] = useState([]);
   const [openaiSummary, setOpenaiSummary] = useState('');
   const [geminiSummary, setGeminiSummary] = useState('');
-  const [showGherkin, setShowGherkin] = useState(true);
   const [scenarioCount, setScenarioCount] = useState(5);
   const [loginCredentials, setLoginCredentials] = useState('');
   const [selectedModels, setSelectedModels] = useState({ openai: true, gemini: false });
@@ -34,8 +33,8 @@ const App = () => {
     localStorage.setItem('testCaseGemini', JSON.stringify(geminiCases));
   }, [openaiCases, geminiCases]);
 
-  // --- PARSING FUNCTION (REUSABLE) ---
-  const parseAIOutput = (output, isGherkin) => {
+  // --- PARSING FUNCTION (GHERKIN ONLY) ---
+  const parseAIOutput = (output) => {
     if (!output || !output.trim()) return { cases: [], summary: '' };
 
     let summary = '';
@@ -47,15 +46,8 @@ const App = () => {
         summary = output.substring(summaryIndex).replace(/coverage summary:/i, '').trim();
     }
 
-    let testCaseChunks = [];
-    if (isGherkin) {
-      const chunks = casesText.split(/Scenario:/im);
-      testCaseChunks = chunks.slice(1).map(chunk => "Scenario:" + chunk);
-    } else {
-      const firstTestIndex = casesText.search(/\d+\.\s/);
-      const cleanOutput = firstTestIndex !== -1 ? casesText.substring(firstTestIndex) : casesText;
-      testCaseChunks = cleanOutput.split(/\n(?=\d+\.\s)/).filter(s => s.trim());
-    }
+    const chunks = casesText.split(/Scenario:/im);
+    const testCaseChunks = chunks.slice(1).map(chunk => "Scenario:" + chunk);
 
     if (testCaseChunks.length === 0 && casesText.trim()) {
       testCaseChunks.push(casesText);
@@ -64,35 +56,17 @@ const App = () => {
     const cases = testCaseChunks.map(textChunk => {
       const lines = textChunk.trim().split('\n').map(l => l.trim());
       let title = lines.shift() || 'Untitled';
-      title = title.replace(/^(Scenario:|Test Case:|\d+\.\s*)/i, '').trim();
-      const remainingText = lines.join('\n');
-      let stepsText = remainingText;
-      let expectedResultText = '';
-      let steps = [];
-      if (!isGherkin) {
-        const resultMatch = remainingText.match(/expected result:/i);
-        if (resultMatch) {
-            const resultIndex = resultMatch.index;
-            stepsText = remainingText.substring(0, resultIndex);
-            expectedResultText = remainingText.substring(resultIndex).replace(/expected result:/i, '').trim();
-        }
-        steps = stepsText.replace(/test steps:/i, '').trim().split('\n');
-      } else {
-        steps = remainingText.split('\n');
-      }
+      title = title.replace(/^(Scenario:)/i, '').trim();
       return {
         id: generateId(),
         title: title,
-        lines: steps.filter(Boolean),
-        expectedResult: expectedResultText,
-        isGherkin: isGherkin,
+        lines: lines.filter(Boolean),
       };
     });
-
     return { cases, summary };
   };
 
-  // --- GENERATION & PARSING LOGIC ---
+  // --- GENERATION LOGIC ---
   const handleGenerate = async () => {
     if (!input.trim() || !!countError) {
       toast.error('Please resolve errors before generating.');
@@ -106,7 +80,7 @@ const App = () => {
     setError(null);
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
-    const prompt = `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in ${showGherkin ? 'Gherkin format' : 'plain text format'}. After generating all test cases, add a final section under the heading "Coverage Summary:" that briefly explains the scope and focus of the generated tests.`;
+    const prompt = `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in Gherkin format. After generating all scenarios, add a final section under the heading "Coverage Summary:" that briefly explains the scope and focus of the generated tests.`;
 
     try {
       const apiCalls = [];
@@ -124,11 +98,11 @@ const App = () => {
       let responseIndex = 0;
 
       if (selectedModels.openai) {
-        newOpenaiData = parseAIOutput(responses[responseIndex]?.data?.output, showGherkin);
+        newOpenaiData = parseAIOutput(responses[responseIndex]?.data?.output);
         responseIndex++;
       }
       if (selectedModels.gemini) {
-        newGeminiData = parseAIOutput(responses[responseIndex]?.data?.output, showGherkin);
+        newGeminiData = parseAIOutput(responses[responseIndex]?.data?.output);
       }
       
       setOpenaiCases(newOpenaiData.cases);
@@ -156,7 +130,16 @@ const App = () => {
     }
   };
 
-  // --- EXPORT AND COPY FUNCTIONS ---
+  // --- FORMATTING & UTILITY FUNCTIONS ---
+  const formatCasesForDisplay = (cases) => {
+    if (!cases || cases.length === 0) return '';
+    return cases.map(tc => `Scenario: ${tc.title}\n${tc.lines.join('\n')}`)
+                .join('\n\n=====================\n\n');
+  };
+
+  const openaiFormattedText = useMemo(() => formatCasesForDisplay(openaiCases), [openaiCases]);
+  const geminiFormattedText = useMemo(() => formatCasesForDisplay(geminiCases), [geminiCases]);
+
   const exportToExcel = () => {
     const allCases = [...openaiCases, ...geminiCases];
     if (allCases.length === 0) {
@@ -164,14 +147,13 @@ const App = () => {
       return;
     }
     
-    // ✅ UPDATED: Simplified data for export
     const dataForExport = allCases.map(tc => ({ 
-      'Test Case Title': tc.title, 
+      'Scenario Title': tc.title, 
       'BDD Steps': tc.lines.join('\n'),
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataForExport);
-    ws['!cols'] = [{ wch: 60 }, { wch: 60 }]; // Updated column widths
+    ws['!cols'] = [{ wch: 60 }, { wch: 60 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Test Cases");
     XLSX.writeFile(wb, 'ai_generated_test_cases.xlsx');
@@ -179,20 +161,12 @@ const App = () => {
   };
 
   const copyToClipboard = () => {
-    const allCases = [...openaiCases, ...geminiCases];
-    if (allCases.length === 0) {
+    const textToCopy = [openaiFormattedText, geminiFormattedText].filter(Boolean).join('\n\n');
+    if (!textToCopy) {
       toast.error('No results to copy.');
       return;
     }
-    
-    const textToCopy = allCases.map(tc => {
-        const title = tc.isGherkin ? `Scenario: ${tc.title}` : `Test Case: ${tc.title}`;
-        const steps = tc.lines.join('\n');
-        const result = tc.expectedResult ? `\n\nExpected Result:\n${tc.expectedResult}` : '';
-        return `${title}\n${steps}${result}`;
-    }).join('\n\n=====================\n\n');
-
-    navigator.clipboard.writeText(textToCopy.trim());
+    navigator.clipboard.writeText(textToCopy);
     toast.success('Results copied!');
   };
 
@@ -206,39 +180,29 @@ const App = () => {
     toast('Cleared all data.', { icon: '🗑️' });
   };
   
-  // --- SUB-COMPONENT FOR RENDERING A SET OF TEST CASES ---
-  const ResultsColumn = ({ title, cases, summary }) => {
+  // --- SUB-COMPONENT FOR RENDERING RESULTS ---
+  const ResultsColumn = ({ title, formattedText, summary }) => {
     const modelKey = title.toLowerCase().includes('openai') ? 'openai' : 'gemini';
     if (!selectedModels[modelKey]) return null;
 
-    if (cases.length === 0 && !loading) {
+    const hasContent = formattedText || summary;
+
+    if (!hasContent && !loading) {
         return <div className='text-center text-gray-500 p-4 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg'>No results from {title.split(' ')[0]}.</div>
     }
 
     return (
       <div className='space-y-4'>
         <h3 className='text-center font-bold text-lg text-blue-300'>{title}</h3>
-        {cases.map((tc) => (
-          <div key={tc.id} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-            <p className="font-bold text-gray-200">{tc.title}</p>
-            <div className="whitespace-pre-wrap text-sm text-gray-300 pt-3 mt-3 border-t border-gray-700">
-                {tc.isGherkin ? tc.lines.join('\n') : 
-                  (<>
-                    <p className="font-semibold text-gray-400">Test Steps:</p>
-                    <div className="pl-2">{tc.lines.join('\n')}</div>
-                    {tc.expectedResult && 
-                      <>
-                        <p className="font-semibold text-green-400 mt-2">Expected Result:</p>
-                        <div className="pl-2">{tc.expectedResult}</div>
-                      </>
-                    }
-                  </>)
-                }
+        {formattedText && (
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 h-[50vh] overflow-y-auto">
+              <pre className="whitespace-pre-wrap text-sm text-gray-300 font-sans">
+                {formattedText}
+              </pre>
             </div>
-          </div>
-        ))}
+        )}
         {summary && (
-            <div className="mt-4 p-3 bg-gray-700/50 rounded-lg text-sm italic border border-gray-600">
+            <div className="p-3 bg-gray-700/50 rounded-lg text-sm italic border border-gray-600">
                 <p className="font-semibold mb-1 text-yellow-400">Coverage Summary:</p>
                 <p className="text-gray-300">{summary}</p>
             </div>
@@ -268,7 +232,7 @@ const App = () => {
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Login Credentials</label>
-                <input type="text" value={loginCredentials} onChange={e => setLoginCredentials(e.target.value)} placeholder="e.g., an admin user" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
+                <input type="text" value={loginCredentials} onChange={e => setLoginCredentials(e.target.value)} placeholder="eg:, Test Email" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
               </div>
               <div>
                  <label className="block text-sm font-medium text-gray-400 mb-1">Case Count</label>
@@ -291,10 +255,8 @@ const App = () => {
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-700">
-                <div className="flex items-center gap-2 text-sm">
-                    <label htmlFor="toggleGherkin" className="font-medium">Gherkin Format</label>
-                    <input id="toggleGherkin" type="checkbox" checked={showGherkin} onChange={() => setShowGherkin(!showGherkin)} className="accent-blue-500 w-5 h-5 cursor-pointer"/>
-                </div>
+                {/* Gherkin toggle removed for simplicity, now Gherkin-only */}
+                <div></div>
                 <div className="flex items-center gap-3">
                     <button onClick={clearAll} className="bg-red-600 hover:bg-red-700 px-5 py-2 rounded shadow transition">Clear All</button>
                     <button onClick={handleGenerate} className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded shadow transition disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={loading || !input.trim() || !!countError}>
@@ -324,8 +286,8 @@ const App = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ResultsColumn title="OpenAI Results" cases={openaiCases} summary={openaiSummary} />
-                    <ResultsColumn title="Gemini Results" cases={geminiCases} summary={geminiSummary} />
+                    <ResultsColumn title="OpenAI Results" formattedText={openaiFormattedText} summary={openaiSummary} />
+                    <ResultsColumn title="Gemini Results" formattedText={geminiFormattedText} summary={geminiSummary} />
                 </div>
               </div>
             )}
