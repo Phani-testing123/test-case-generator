@@ -122,7 +122,15 @@ const App = () => {
       const newRuns = [...runs, newRun];
       setRuns(newRuns);
       setActiveRunIndex(newRuns.length - 1);
-      setExpandedIds({});
+
+      // ✅ FIXED: Expand all newly generated cards by default
+      const allNewCases = [...openaiCases, ...geminiCases];
+      const initialExpansionState = allNewCases.reduce((acc, tc) => {
+        acc[tc.id] = true; // Set each new test case to be expanded
+        return acc;
+      }, {});
+      setExpandedIds(initialExpansionState);
+
       toast.success('New test run generated!');
     } catch (err) {
       console.error('Error:', err);
@@ -279,7 +287,6 @@ const App = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">AI Model(s)</label>
-                {/* ✅ FIXED: Removed h-full for better alignment */}
                 <div className="flex items-center justify-around bg-gray-700 p-2 rounded-md text-sm">
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input type="checkbox" checked={selectedModels.openai} onChange={() => setSelectedModels(prev => ({...prev, openai: !prev.openai}))} className="accent-blue-500 h-4 w-4" />
