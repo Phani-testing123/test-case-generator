@@ -14,13 +14,10 @@ const App = () => {
   const [openaiCases, setOpenaiCases] = useState([]);
   const [geminiCases, setGeminiCases] = useState([]);
   const [expandedIds, setExpandedIds] = useState({});
-
-  // --- ADVANCED OPTIONS STATE ---
   const [showGherkin, setShowGherkin] = useState(true);
   const [scenarioCount, setScenarioCount] = useState(5);
   const [loginCredentials, setLoginCredentials] = useState('');
   const [selectedModels, setSelectedModels] = useState({ openai: true, gemini: false });
-  // ✅ RESTORED: State for validation message
   const [countError, setCountError] = useState(null);
 
   // --- SESSION PERSISTENCE ---
@@ -38,43 +35,58 @@ const App = () => {
 
   // --- PARSING FUNCTION (REUSABLE) ---
   const parseAIOutput = (output, isGherkin) => {
-    if (!output) return [];
-    
-    const chunks = output.split(/(Scenario:|Test Case:)/im);
-    const scenarios = [];
+    if (!output || !output.trim()) return [];
 
-    for (let i = 1; i < chunks.length; i += 2) {
-      if (chunks[i + 1]) {
-        const scenarioText = chunks[i] + chunks[i + 1];
-        scenarios.push(scenarioText);
-      }
+    let testCaseChunks = [];
+
+    if (isGherkin) {
+      // Gherkin format is reliably split by the "Scenario:" keyword
+      const chunks = output.split(/Scenario:/im);
+      testCaseChunks = chunks.slice(1).map(chunk => "Scenario:" + chunk);
+    } else {
+      // ✅ NEW: Non-Gherkin is more reliably split by a numbered list pattern at the start of a line.
+      // This regex splits the string *before* "1. ", "2. ", etc., keeping the delimiter.
+      const firstTestIndex = output.search(/\d+\.\s/);
+      const cleanOutput = firstTestIndex !== -1 ? output.substring(firstTestIndex) : output;
+      testCaseChunks = cleanOutput.split(/\n(?=\d+\.\s)/).filter(s => s.trim());
     }
 
-    return scenarios.map(scenarioText => {
-      const lines = scenarioText.trim().split(/\r?\n/).map(l => l.trim());
-      let rawTitle = lines.shift() || 'Untitled';
-      let cleanTitle = rawTitle.replace(/(Scenario:|Test Case:)/i, '').trim();
-      let steps = [];
-      let expectedResult = '';
+    if (testCaseChunks.length === 0 && output.trim()) {
+      // Fallback: If splitting fails, treat the whole output as one test case
+      testCaseChunks.push(output);
+    }
+
+    return testCaseChunks.map(textChunk => {
+      const lines = textChunk.trim().split('\n').map(l => l.trim());
+      let title = lines.shift() || 'Untitled';
+      
+      // Clean up title for both formats
+      title = title.replace(/^(Scenario:|Test Case:|\d+\.\s*)/i, '').trim();
       
       const remainingText = lines.join('\n');
+      let stepsText = remainingText;
+      let expectedResultText = '';
+      let steps = [];
 
-      if (isGherkin) {
-        steps = remainingText.split('\n');
-      } else {
+      if (!isGherkin) {
         const resultMatch = remainingText.match(/expected result:/i);
-        let stepsText = remainingText;
-
         if (resultMatch) {
             const resultIndex = resultMatch.index;
             stepsText = remainingText.substring(0, resultIndex);
-            expectedResult = remainingText.substring(resultIndex).replace(/expected result:/i, '').trim();
+            expectedResultText = remainingText.substring(resultIndex).replace(/expected result:/i, '').trim();
         }
-        
         steps = stepsText.replace(/test steps:/i, '').trim().split('\n');
+      } else {
+        steps = remainingText.split('\n');
       }
 
-      return { id: generateId(), title: cleanTitle, lines: steps, expectedResult, isGherkin };
+      return {
+        id: generateId(),
+        title: title,
+        lines: steps.filter(Boolean), // Remove any empty lines from steps
+        expectedResult: expectedResultText,
+        isGherkin: isGherkin,
+      };
     });
   };
 
@@ -93,8 +105,8 @@ const App = () => {
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
     const prompt = showGherkin
-      ? `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in Gherkin format...`
-      : `${input}\n\n${personaText}Please generate ${scenarioCount} test cases. For each, you MUST use the exact headings 'Test Steps:' and 'Expected Result:'.`;
+      ? `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in Gherkin format. Generate a comprehensive set of test cases...`
+      : `${input}\n\n${personaText}Please generate ${scenarioCount} test cases. For each test case, start the title on a new line with a number and a period (e.g., '1. Test Case Title'). You MUST use the exact headings 'Test Steps:' and 'Expected Result:'.`;
 
     try {
       const apiCalls = [];
@@ -144,7 +156,6 @@ const App = () => {
     setExpandedIds(prev => ({...prev, [id]: !prev[id]}));
   };
 
-  // ✅ RESTORED: Validation handler for case count
   const handleCountChange = (e) => {
     const count = Number(e.target.value);
     setScenarioCount(count);
