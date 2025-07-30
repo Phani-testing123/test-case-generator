@@ -40,14 +40,11 @@ const App = () => {
   const parseAIOutput = (output, isGherkin) => {
     if (!output) return [];
     
-    // Split by the keywords but keep them in the array
     const chunks = output.split(/(Scenario:|Test Case:)/im);
     const scenarios = [];
 
-    // ✅ FIXED: Start loop at 1 to skip any preamble text (like "Feature: ...")
     for (let i = 1; i < chunks.length; i += 2) {
       if (chunks[i + 1]) {
-        // Re-combine the delimiter (e.g., "Scenario:") with its content
         const scenarioText = chunks[i] + chunks[i + 1];
         scenarios.push(scenarioText);
       }
@@ -98,7 +95,6 @@ const App = () => {
         apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-test-cases', { input: prompt }));
       }
       if (selectedModels.gemini) {
-        // IMPORTANT: Assumes you created this new endpoint on your backend
         apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-gemini-test-cases', { input: prompt }));
       }
 
@@ -136,12 +132,70 @@ const App = () => {
       setLoading(false);
     }
   };
-
+  
   // --- UI INTERACTION HANDLER ---
   const toggleExpand = (id) => {
     setExpandedIds(prev => ({...prev, [id]: !prev[id]}));
   };
-  
+
+  // --- EXPORT AND COPY FUNCTIONS ---
+  const exportToExcel = () => {
+    if (!activeRun || (!activeRun.openaiCases.length && !activeRun.geminiCases.length)) {
+      toast.error('No results to export.');
+      return;
+    }
+    
+    const wb = XLSX.utils.book_new();
+    
+    const createSheet = (cases, sheetName) => {
+        const data = cases.map(tc => ({ 
+            'Test Case Title': tc.title, 
+            'Steps': tc.lines.join('\n'), 
+            'Expected Result': tc.expectedResult || 'N/A' 
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        ws['!cols'] = [{ wch: 50 }, { wch: 60 }, { wch: 60 }];
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    };
+
+    if (activeRun.openaiCases.length > 0) {
+        createSheet(activeRun.openaiCases, "OpenAI Results");
+    }
+
+    if (activeRun.geminiCases.length > 0) {
+        createSheet(activeRun.geminiCases, "Gemini Results");
+    }
+
+    XLSX.writeFile(wb, 'consolidated_test_cases.xlsx');
+    toast.success('Exported to Excel!');
+  };
+
+  const copyToClipboard = () => {
+    if (!activeRun || (!activeRun.openaiCases.length && !activeRun.geminiCases.length)) {
+      toast.error('No results to copy.');
+      return;
+    }
+    let textToCopy = '';
+
+    const formatCases = (cases, modelName) => {
+        if (cases.length === 0) return '';
+        let section = `--- ${modelName} Results ---\n\n`;
+        section += cases.map(tc => {
+            const title = tc.isGherkin ? `Scenario: ${tc.title}` : `Test Case: ${tc.title}`;
+            const steps = tc.lines.join('\n');
+            const result = tc.expectedResult ? `\n\nExpected Result:\n${tc.expectedResult}` : '';
+            return `${title}\n${steps}${result}`;
+        }).join('\n\n=====================\n\n');
+        return section;
+    };
+    
+    textToCopy += formatCases(activeRun.openaiCases, 'OpenAI');
+    textToCopy += activeRun.geminiCases.length > 0 ? '\n\n' + formatCases(activeRun.geminiCases, 'Gemini') : '';
+
+    navigator.clipboard.writeText(textToCopy.trim());
+    toast.success('Results copied!');
+  };
+
   const clearAll = () => {
     setInput('');
     setRuns([]);
@@ -153,12 +207,11 @@ const App = () => {
   // --- SUB-COMPONENT FOR RENDERING A SET OF TEST CASES ---
   const TestCaseColumn = ({ title, cases }) => {
     if (!cases || cases.length === 0) {
-        // Optionally render a placeholder if the model was selected but returned no cases
-        if (title === "OpenAI Results" && selectedModels.openai) {
-            return <div className='text-center text-gray-500 p-4'>No results from OpenAI.</div>
+        if (title === "OpenAI Results" && activeRun?.modelsUsed.openai) {
+            return <div className='text-center text-gray-500 p-4 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg'>No results from OpenAI.</div>
         }
-        if (title === "Gemini Results" && selectedModels.gemini) {
-            return <div className='text-center text-gray-500 p-4'>No results from Gemini.</div>
+        if (title === "Gemini Results" && activeRun?.modelsUsed.gemini) {
+            return <div className='text-center text-gray-500 p-4 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg'>No results from Gemini.</div>
         }
         return null;
     }
@@ -217,7 +270,7 @@ const App = () => {
             
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Login Credentials(Optional)</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">User Persona (Optional)</label>
                 <input type="text" value={userPersona} onChange={e => setUserPersona(e.target.value)} placeholder="e.g., an admin user" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
               </div>
               <div>
@@ -226,7 +279,8 @@ const App = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">AI Model(s)</label>
-                <div className="flex items-center justify-around bg-gray-700 p-2 rounded-md text-sm h-full">
+                {/* ✅ FIXED: Removed h-full for better alignment */}
+                <div className="flex items-center justify-around bg-gray-700 p-2 rounded-md text-sm">
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input type="checkbox" checked={selectedModels.openai} onChange={() => setSelectedModels(prev => ({...prev, openai: !prev.openai}))} className="accent-blue-500 h-4 w-4" />
                       OpenAI
@@ -267,8 +321,15 @@ const App = () => {
                         </button>
                     ))}
                 </div>
-                <div className='text-center p-2'>
-                    <p className="text-sm text-yellow-400 mt-1">⚠️ AI can make mistakes. Please review with human intelligence.</p>
+                <div className="flex justify-between items-center pt-2">
+                    <div>
+                        <h2 className='text-lg font-semibold text-green-400'>✅ Consolidated Results (Run {activeRunIndex + 1})</h2>
+                        <p className="text-sm text-yellow-400 mt-1">⚠️ AI can make mistakes. Please review with human intelligence.</p>
+                    </div>
+                    <div className='flex gap-3'>
+                        <button onClick={copyToClipboard} className="bg-gray-600 hover:bg-gray-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={!activeRun.openaiCases.length && !activeRun.geminiCases.length}>📋 Copy</button>
+                        <button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={!activeRun.openaiCases.length && !activeRun.geminiCases.length}>📤 Export Excel</button>
+                    </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
