@@ -1,88 +1,36 @@
-import React, { useState } from 'react';
-import { saveAs } from 'file-saver';
+import React, { useState } from "react";
+import axios from "axios";
 
 export default function App() {
-  const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
+  const [input, setInput] = useState("");
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
   const [isGherkin, setIsGherkin] = useState(true);
-  const [coverage, setCoverage] = useState(0);
+  const [coverage, setCoverage] = useState(null);
 
   const generateTestCases = async () => {
-    if (!input.trim()) {
-      setOutput('Please enter acceptance criteria or a feature description.');
-      return;
-    }
-
+    if (!input.trim()) return;
+    setLoading(true);
     try {
-      const response = await fetch('https://api.testgen.ai/v1/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ criteria: input })
+      const response = await axios.post("https://test-case-backend.onrender.com/generate-test-cases", {
+        input,
+        format: isGherkin ? "gherkin" : "plain"
       });
-
-      const data = await response.json();
-      const steps = data.steps || [];
-
-      const formattedSteps = steps.map(step => isGherkin ? `  ${step}` : `- ${step}`);
-
-      const testCase = `
-${isGherkin ? 'Feature: ' + (data.feature || 'Dynamic Test Case Generation') : 'Test Case Title: ' + (data.feature || 'Generated Logic')}
-
-${isGherkin ? 'Scenario: ' + (data.scenario || 'AI-generated scenario') : 'Steps:'}
-${formattedSteps.join('\n')}
-
-[Positive Case]\n${isGherkin ? '  Then ' + (data.positive || 'system behaves as expected with valid input') : 'Expected Result: ' + (data.positive || 'System behaves correctly with valid input')}\n
-[Negative Case]\n${isGherkin ? '  Then ' + (data.negative || 'error is shown for invalid input') : 'Expected Result: ' + (data.negative || 'System rejects invalid input')}\n
-[Edge Case]\n${isGherkin ? '  Then ' + (data.edge || 'system handles edge cases properly') : 'Expected Result: ' + (data.edge || 'Edge input handled gracefully')}
-      `;
-
-      setOutput(testCase.trim());
-      setCoverage(data.coverage || 100);
+      setOutput(response.data.output || "");
+      setCoverage(response.data.coverage || null);
     } catch (error) {
-      setOutput('Failed to generate test cases. Please try again later.');
-      setCoverage(0);
+      console.error("Error generating test cases:", error);
+      setOutput("❌ Failed to generate test cases. Please check console.");
     }
-  };
-
-  const exportToCSV = () => {
-    const blob = new Blob([output], { type: 'text/csv;charset=utf-8;' });
-    saveAs(blob, 'test-cases.csv');
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-white p-6 flex flex-col items-center">
-      <h1 className="text-4xl font-bold mb-4 flex items-center">
-        <span role="img" aria-label="test tube">\uD83D\uDD2C</span> Test Case Generator
-      </h1>
+    <div className="min-h-screen bg-gray-100 p-6 text-gray-800">
+      <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow p-8">
+        <h1 className="text-3xl font-bold mb-6">🧪 Test Case Generator</h1>
 
-      <div className="text-sm text-green-400 mb-4">Test Coverage: {coverage}%</div>
-
-      <div className="max-w-3xl w-full flex flex-col gap-4">
-        <textarea
-          className="w-full h-48 p-4 bg-zinc-800 border border-zinc-700 rounded-md resize-y"
-          placeholder="Paste acceptance criteria or feature description..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        ></textarea>
-
-        <div className="flex justify-between items-center flex-wrap gap-4">
-          <button
-            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded"
-            onClick={generateTestCases}
-          >
-            Generate Test Cases
-          </button>
-
-          <button
-            className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded"
-            onClick={exportToCSV}
-            disabled={!output}
-          >
-            Export to CSV
-          </button>
-
+        <div className="mb-4 flex items-center gap-4">
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -91,10 +39,37 @@ ${formattedSteps.join('\n')}
             />
             Gherkin Format
           </label>
+          {coverage !== null && (
+            <span className="ml-auto font-semibold text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
+              📊 Test Coverage: {coverage}%
+            </span>
+          )}
         </div>
 
-        <div className="bg-zinc-800 border border-zinc-700 rounded p-4 whitespace-pre-wrap overflow-x-auto mt-4">
-          {output || 'Paste input and click "Generate Test Cases" to begin.'}
+        <textarea
+          rows="10"
+          className="w-full p-4 border rounded mb-4 resize-none text-base"
+          placeholder="Paste acceptance criteria or feature description..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+        />
+
+        <button
+          onClick={generateTestCases}
+          disabled={loading}
+          className="px-5 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700"
+        >
+          {loading ? "Generating..." : `Generate ${isGherkin ? "Gherkin" : "Plain"} Test Cases`}
+        </button>
+
+        <div className="mt-6">
+          <h2 className="text-2xl font-semibold mb-2">Generated Test Cases:</h2>
+          <pre className="whitespace-pre-wrap bg-gray-50 p-4 rounded max-h-[400px] overflow-y-auto text-sm border">
+            {output || ""}
+          </pre>
+          <p className="text-xs text-gray-600 mt-2 italic">
+            ⚠️ These test cases are generated by AI and may still contain errors. Please review with your human brain 🧠.
+          </p>
         </div>
       </div>
     </div>
