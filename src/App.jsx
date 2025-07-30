@@ -19,7 +19,6 @@ const App = () => {
   const [showGherkin, setShowGherkin] = useState(true);
   const [scenarioCount, setScenarioCount] = useState(5);
   const [userPersona, setUserPersona] = useState('');
-  const [caseTypes, setCaseTypes] = useState({ positive: true, negative: true, edge: true });
 
   // --- DERIVED STATE ---
   const activeTestCases = runs[activeRunIndex]?.testCases || [];
@@ -45,9 +44,9 @@ const App = () => {
     setLoading(true);
     setError(null);
 
-    const selectedTypes = Object.entries(caseTypes).filter(([, isSelected]) => isSelected).map(([type]) => type).join(', ');
     const personaText = userPersona.trim() ? `For a user persona of "${userPersona.trim()}", ` : '';
-    const prompt = `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in ${showGherkin ? 'Gherkin format' : 'plain text format'}. Focus on the following types: ${selectedTypes || 'all'}. Ensure each test case has detailed steps.`;
+    // ✅ FINAL PROMPT: Asks for all combinations by default for better results.
+    const prompt = `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in ${showGherkin ? 'Gherkin format' : 'plain text format'}. Generate a comprehensive set of test cases covering all possible combinations, including positive, negative, and edge-case scenarios. Ensure each test case has detailed steps.`;
 
     try {
       const response = await axios.post('https://test-case-backend.onrender.com/generate-test-cases', { input: prompt });
@@ -140,25 +139,15 @@ const App = () => {
               onChange={(e) => setInput(e.target.value)}
             />
             
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+            {/* ✅ UPDATED: Simplified grid to 2 columns */}
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">User Persona (Optional)</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Login Credentials (Optional)</label>
                 <input type="text" value={userPersona} onChange={e => setUserPersona(e.target.value)} placeholder="e.g., an admin user" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
               </div>
               <div>
                  <label className="block text-sm font-medium text-gray-400 mb-1">Case Count</label>
                  <input type="number" value={scenarioCount} onChange={e => setScenarioCount(Number(e.target.value))} min="1" max="20" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Case Types</label>
-                <div className="flex items-center justify-around bg-gray-700 p-2 rounded-md text-sm h-full">
-                  {Object.keys(caseTypes).map(type => (
-                    <label key={type} className="flex items-center gap-1.5 cursor-pointer capitalize">
-                      <input type="checkbox" checked={caseTypes[type]} onChange={() => setCaseTypes(prev => ({ ...prev, [type]: !prev[type] }))} className="accent-blue-500 h-4 w-4" />
-                      {type}
-                    </label>
-                  ))}
-                </div>
               </div>
             </div>
 
@@ -195,8 +184,8 @@ const App = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <h2 className='font-semibold text-green-400'>✅ Generated Test Cases (Run {activeRunIndex + 1})</h2>
-                    {/* --- NEW: Warning Message --- */}
-                    <p className="text-xs text-yellow-400 mt-1">⚠️ AI can make mistakes. Please review with human intelligence.</p>
+                    {/* ✅ UPDATED: Font size increased from text-xs to text-sm */}
+                    <p className="text-sm text-yellow-400 mt-1">⚠️ AI can make mistakes. Please review with human intelligence.</p>
                   </div>
                   <div className='flex gap-3'>
                       <button onClick={copyToClipboard} className="bg-gray-600 hover:bg-gray-700 text-sm py-2 px-4 rounded shadow transition">📋 Copy</button>
