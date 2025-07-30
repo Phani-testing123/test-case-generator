@@ -22,8 +22,26 @@ const App = () => {
         }
       );
 
-      const outputLines = response.data.output.split('\n').filter(Boolean);
-      setTestCases(outputLines);
+      const lines = response.data.output.split('\n');
+const formattedLines = [];
+
+lines.forEach((line, index) => {
+  formattedLines.push(line);
+  
+  // Add space after Expected Result or end of test case block
+  if (line.toLowerCase().startsWith('expected result')) {
+    formattedLines.push(''); // Adds a blank line
+  }
+
+  // Optional: Add blank line between numbered cases
+  if (/^\d+\.\s*(Positive|Negative|Edge)?\s*test case/i.test(line) && index !== 0) {
+    formattedLines.push('');
+  }
+});
+
+setTestCases(formattedLines);
+
+     // setTestCases(outputLines);
     } catch (error) {
       console.error('Error:', error);
       setTestCases(['❌ Failed to generate test cases. Try again later.']);
