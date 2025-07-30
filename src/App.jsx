@@ -22,24 +22,11 @@ const App = () => {
         }
       );
 
-      const lines = response.data.output.split('\n');
-const formattedLines = [];
-
-lines.forEach((line, index) => {
-  formattedLines.push(line);
-  
-  // Add space after Expected Result or end of test case block
-  if (line.toLowerCase().startsWith('expected result')) {
-    formattedLines.push(''); // Adds a blank line
-  }
-
-  // Optional: Add blank line between numbered cases
-  if (/^\d+\.\s*(Positive|Negative|Edge)?\s*test case/i.test(line) && index !== 0) {
-    formattedLines.push('');
-  }
-});
-
-setTestCases(formattedLines);
+    const outputLines = response.data.output
+  .split('\n')
+  .flatMap(line => line.trim().match(/^(\d+\.)|^(Positive|Negative|Edge) Test Case:/i) ? [line, ''] : [line])
+  .filter(Boolean);
+setTestCases(outputLines);
 
      // setTestCases(outputLines);
     } catch (error) {
