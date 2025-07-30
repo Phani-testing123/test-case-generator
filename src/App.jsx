@@ -20,6 +20,8 @@ const App = () => {
   const [scenarioCount, setScenarioCount] = useState(5);
   const [loginCredentials, setLoginCredentials] = useState('');
   const [selectedModels, setSelectedModels] = useState({ openai: true, gemini: false });
+  // ✅ RESTORED: State for validation message
+  const [countError, setCountError] = useState(null);
 
   // --- SESSION PERSISTENCE ---
   useEffect(() => {
@@ -60,7 +62,6 @@ const App = () => {
       if (isGherkin) {
         steps = remainingText.split('\n');
       } else {
-        // ✅ UPDATED: More robust parsing for non-Gherkin format
         const resultMatch = remainingText.match(/expected result:/i);
         let stepsText = remainingText;
 
@@ -91,11 +92,9 @@ const App = () => {
     setError(null);
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
-    
-    // ✅ UPDATED: More explicit prompt for non-Gherkin format
     const prompt = showGherkin
-      ? `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in Gherkin format. Generate a comprehensive set of test cases covering all possible combinations, including positive, negative, and edge-case scenarios.`
-      : `${input}\n\n${personaText}Please generate ${scenarioCount} test cases. For each test case, you MUST use the exact headings 'Test Steps:' and 'Expected Result:'.`;
+      ? `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in Gherkin format...`
+      : `${input}\n\n${personaText}Please generate ${scenarioCount} test cases. For each, you MUST use the exact headings 'Test Steps:' and 'Expected Result:'.`;
 
     try {
       const apiCalls = [];
@@ -143,6 +142,17 @@ const App = () => {
   // --- UI INTERACTION HANDLER ---
   const toggleExpand = (id) => {
     setExpandedIds(prev => ({...prev, [id]: !prev[id]}));
+  };
+
+  // ✅ RESTORED: Validation handler for case count
+  const handleCountChange = (e) => {
+    const count = Number(e.target.value);
+    setScenarioCount(count);
+    if (count < 5 || count > 12) {
+      setCountError('Count must be between 5 and 12.');
+    } else {
+      setCountError(null);
+    }
   };
 
   // --- EXPORT AND COPY FUNCTIONS ---
