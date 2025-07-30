@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { Toaster, toast } from 'react-hot-toast';
@@ -19,19 +19,6 @@ const App = () => {
   const [loginCredentials, setLoginCredentials] = useState('');
   const [selectedModels, setSelectedModels] = useState({ openai: true, gemini: false });
   const [countError, setCountError] = useState(null);
-
-  // --- SESSION PERSISTENCE ---
-  useEffect(() => {
-    const savedOpenai = localStorage.getItem('testCaseOpenai');
-    const savedGemini = localStorage.getItem('testCaseGemini');
-    if (savedOpenai) setOpenaiCases(JSON.parse(savedOpenai));
-    if (savedGemini) setGeminiCases(JSON.parse(savedGemini));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('testCaseOpenai', JSON.stringify(openaiCases));
-    localStorage.setItem('testCaseGemini', JSON.stringify(geminiCases));
-  }, [openaiCases, geminiCases]);
 
   // --- PARSING FUNCTION (GHERKIN ONLY) ---
   const parseAIOutput = (output) => {
@@ -137,8 +124,8 @@ const App = () => {
                 .join('\n\n=====================\n\n');
   };
 
-  const openaiFormattedText = useMemo(() => formatCasesForDisplay(openaiCases), [openaiCases]);
-  const geminiFormattedText = useMemo(() => formatCasesForDisplay(geminiCases), [geminiCases]);
+  const openaiFormattedText = formatCasesForDisplay(openaiCases);
+  const geminiFormattedText = formatCasesForDisplay(geminiCases);
 
   const exportToExcel = () => {
     const allCases = [...openaiCases, ...geminiCases];
@@ -185,9 +172,7 @@ const App = () => {
     const modelKey = title.toLowerCase().includes('openai') ? 'openai' : 'gemini';
     if (!selectedModels[modelKey]) return null;
 
-    const hasContent = formattedText || summary;
-
-    if (!hasContent && !loading) {
+    if (!formattedText && !summary && !loading) {
         return <div className='text-center text-gray-500 p-4 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg'>No results from {title.split(' ')[0]}.</div>
     }
 
@@ -232,7 +217,7 @@ const App = () => {
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Login Credentials</label>
-                <input type="text" value={loginCredentials} onChange={e => setLoginCredentials(e.target.value)} placeholder="eg:, Test Email" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
+                <input type="text" value={loginCredentials} onChange={e => setLoginCredentials(e.target.value)} placeholder="e.g., testuser@example.com" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
               </div>
               <div>
                  <label className="block text-sm font-medium text-gray-400 mb-1">Case Count</label>
@@ -254,9 +239,7 @@ const App = () => {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-700">
-                {/* Gherkin toggle removed for simplicity, now Gherkin-only */}
-                <div></div>
+            <div className="flex flex-wrap items-center justify-end gap-4 pt-4 border-t border-gray-700">
                 <div className="flex items-center gap-3">
                     <button onClick={clearAll} className="bg-red-600 hover:bg-red-700 px-5 py-2 rounded shadow transition">Clear All</button>
                     <button onClick={handleGenerate} className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded shadow transition disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={loading || !input.trim() || !!countError}>
