@@ -51,7 +51,7 @@ const App = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-center gap-4">
           <img src="/bk-icon.png" alt="Burger King Logo" className="h-12 w-12" />
-          <h1 className="text-3xl font-bold text-center">Gherkin Test Case Generator</h1>
+          <h1 className="text-3xl font-bold text-center">Test Case Generator</h1>
         </div>
 
         <textarea
