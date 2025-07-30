@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import './App.css';
-import bkLogo from './assets/bk-icon.png'; // Ensure this path is correct
+import logo from './assets/bk-icon.png';
 
 function App() {
   const [input, setInput] = useState('');
