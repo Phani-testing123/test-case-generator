@@ -69,11 +69,17 @@ const App = () => {
       const scenarios = output.split(/Scenario:|^\d+\.\s*(Positive|Negative|Edge)\s+Test\s+Case:/im).filter(s => s && s.trim() !== '');
       
       const structuredTestCases = scenarios.map(scenarioText => {
-        const lines = scenarioText.trim().split(/\r?\n/).map(l => l.trim());
-        const title = lines.shift() || 'Untitled';
-        const fullTitle = `Scenario: ${title}`;
-        return {
-          id: generateId(),
+  const lines = scenarioText.trim().split(/\r?\n/).map(l => l.trim());
+  let rawTitle = lines.shift() || 'Untitled';
+
+  // ✅ NEW: Clean the title to remove the AI's numbering/prefix
+  let cleanTitle = rawTitle.replace(/(Scenario:)?\s*\d+\.\s*Test\s+Case:\s*/i, '').trim();
+
+  const fullTitle = `Scenario: ${cleanTitle}`; // Now uses the cleaned title
+
+  return {
+    id: generateId(),
+    title: fullTitle,
           title: fullTitle,
           lines: lines,
           status: 'pending', // 'pass', 'fail', 'skip'
@@ -170,7 +176,7 @@ const App = () => {
             {/* --- NEW: Advanced Options Panel --- */}
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">User Persona (Optional)</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Login Credentials (Optional)</label>
                 <input type="text" value={userPersona} onChange={e => setUserPersona(e.target.value)} placeholder="e.g., an admin user" className="w-full bg-gray-700 p-2 rounded-md text-sm" />
               </div>
               <div>
