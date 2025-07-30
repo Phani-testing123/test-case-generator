@@ -1,106 +1,108 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import './index.css'; // TailwindCSS styles
 
-function App() {
+const App = () => {
   const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
-  const [gherkinFormat, setGherkinFormat] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const [testCases, setTestCases] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showGherkin, setShowGherkin] = useState(true);
 
   const handleGenerate = async () => {
+    if (!input.trim()) return;
+
+    setLoading(true);
     try {
-      const response = await axios.post('https://test-case-backend-ten.vercel.app/generate-test-cases', {
-        input: gherkinFormat ? `Generate test cases in Gherkin format:\n${input}` : input,
-      });
-      setOutput(response.data.output);
+      const response = await axios.post(
+        'https://test-case-backend.onrender.com/generate-test-cases',
+        {
+          input: `${input}\nPlease generate ${showGherkin ? 'Gherkin format' : 'Normal plain text'} test cases including positive, negative and edge cases with detailed steps.`
+        }
+      );
+
+      const outputLines = response.data.output.split('\n').filter(Boolean);
+      setTestCases(outputLines);
     } catch (error) {
-      console.error('Error generating test cases:', error);
-      setOutput('❌ Failed to generate test cases.');
+      console.error('Error:', error);
+      setTestCases(['❌ Failed to generate test cases. Try again later.']);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const exportToExcel = () => {
-    const rows = output.split('\n\n').map((scenario) => [scenario]);
-    const worksheet = XLSX.utils.aoa_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'TestCases');
-    XLSX.writeFile(workbook, 'generated_test_cases.xlsx');
+  const exportExcel = (data) => {
+    const ws = XLSX.utils.aoa_to_sheet(data.map(line => [line]));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'TestCases');
+    XLSX.writeFile(wb, 'generated_test_cases.xlsx');
   };
 
   return (
-    <div className={darkMode ? 'bg-gray-900 text-white min-h-screen' : 'bg-white text-black min-h-screen'}>
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <img src="/bk-icon.png" alt="Burger King Logo" className="h-16" />
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={darkMode}
-              onChange={() => setDarkMode(!darkMode)}
-              className="mr-2"
-            />
-            Dark Mode
-          </label>
+    <div className="min-h-screen bg-gray-900 text-white px-4 py-6 sm:px-8">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center justify-center gap-4">
+          <img src="/bk-icon.png" alt="Burger King Logo" className="h-12 w-12" />
+          <h1 className="text-3xl font-bold text-center">Gherkin Test Case Generator</h1>
         </div>
 
-        <h1 className="text-2xl font-bold mb-4">🧪 Test Case Generator</h1>
-
         <textarea
-          className="w-full p-3 border rounded mb-4 text-black"
-          rows={4}
-          placeholder="Enter feature or requirement here..."
+          className="w-full rounded-lg p-4 text-black text-sm sm:text-base resize-none"
+          rows={10}
+          placeholder="Paste acceptance criteria or feature description..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
 
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <button
             onClick={handleGenerate}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded"
+            className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded shadow w-full sm:w-auto"
+            disabled={loading}
           >
-            Generate Test Cases
+            {loading ? 'Generating...' : 'Generate Test Cases'}
           </button>
 
-          <label className="flex items-center ml-4">
+          <div className="flex items-center gap-2 text-sm">
+            <label htmlFor="toggleGherkin" className="whitespace-nowrap">Gherkin Format</label>
             <input
+              id="toggleGherkin"
               type="checkbox"
-              checked={gherkinFormat}
-              onChange={() => setGherkinFormat(!gherkinFormat)}
-              className="mr-2"
+              checked={showGherkin}
+              onChange={() => setShowGherkin(!showGherkin)}
+              className="accent-yellow-400 w-5 h-5"
             />
-            Gherkin Format
-          </label>
+          </div>
         </div>
 
-        {output && (
-          <div className="bg-gray-800 text-white p-4 rounded mt-4">
-            <p className="text-green-400 font-semibold mb-2">✅ Generated Gherkin Test Cases:</p>
-            {output.split(/(?=Scenario:)/g).map((scenario, index) => (
-              <pre
-                key={index}
-                className="bg-gray-900 text-white p-3 rounded mb-4 whitespace-pre-wrap"
+        {testCases.length > 0 && (
+          <div className="space-y-4 mt-6">
+            <div className="text-green-400 font-semibold">
+              ✅ Generated {showGherkin ? 'Gherkin' : 'Standard'} Test Cases:
+            </div>
+
+            <div className="bg-gray-800 rounded-lg p-4 overflow-auto max-h-[400px] whitespace-pre-wrap text-sm border border-gray-700">
+              {testCases.map((line, index) => (
+                <div key={index}>{line}</div>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <p className="text-xs text-yellow-400">
+                ⚠️ These test cases are generated by AI and might still make mistakes. Trust human intelligence for final review.
+              </p>
+
+              <button
+                onClick={() => exportExcel(testCases)}
+                className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded shadow-md"
               >
-                {index === 0 && scenario.startsWith('Feature:')
-                  ? scenario
-                  : `Scenario:${scenario}`}
-              </pre>
-            ))}
-            <p className="text-yellow-300 text-xs mt-2">
-              ⚠️ These test cases are generated by AI and might still make mistakes. Trust human intelligence for final review.
-            </p>
-            <button
-              onClick={exportToExcel}
-              className="mt-4 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
-            >
-              📥 Export to Excel
-            </button>
+                📤 Export to Excel
+              </button>
+            </div>
           </div>
         )}
       </div>
     </div>
   );
-}
+};
 
 export default App;
