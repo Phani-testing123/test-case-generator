@@ -8,16 +8,20 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// ✅ Middleware
+app.use(cors({
+  origin: 'https://test-case-generator-one.vercel.app',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+}));
 app.use(express.json());
 
-// OpenAI setup
+// ✅ OpenAI setup
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// POST route for generating test cases
+// ✅ Route for generating test cases
 app.post('/generate-test-cases', async (req, res) => {
   try {
     const { input } = req.body;
@@ -43,7 +47,7 @@ app.post('/generate-test-cases', async (req, res) => {
   }
 });
 
-// Optional health check route
+// ✅ Optional health check
 app.get('/', (req, res) => {
   res.send('Backend is running!');
 });

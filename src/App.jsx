@@ -1,48 +1,60 @@
 import { useState } from 'react';
 import './App.css';
-import logo from './assets/burger-king-logo.png';
+import bkLogo from './assets/bk-icon.png'; // Ensure this path is correct
 
 function App() {
   const [input, setInput] = useState('');
-  const [testCases, setTestCases] = useState([]);
-  const [gherkinFormat, setGherkinFormat] = useState(true);
+  const [output, setOutput] = useState('');
   const [darkMode, setDarkMode] = useState(false);
+  const [gherkinFormat, setGherkinFormat] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const generateTestCases = async () => {
-    const res = await fetch('https://test-case-backend-ten.vercel.app/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input, gherkinFormat }),
-    });
-    const data = await res.json();
-    setTestCases(data.testCases || []);
-  };
+    if (!input.trim()) return;
+    setLoading(true);
 
-  const exportExcel = async (data) => {
-    const XLSX = await import('xlsx');
-    const worksheet = XLSX.utils.json_to_sheet(data.map((t, i) => ({ ID: i + 1, TestCase: t })));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'TestCases');
-    XLSX.writeFile(workbook, 'Generated_Test_Cases.xlsx');
+    try {
+      const response = await fetch('https://test-case-backend-ten.vercel.app/generate-test-cases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: gherkinFormat
+            ? `Generate test cases in Gherkin format with positive, negative, and edge cases:\n${input}`
+            : input,
+        }),
+      });
+
+      const data = await response.json();
+      setOutput(data.output || 'No test cases generated.');
+    } catch (error) {
+      console.error('Error:', error);
+      setOutput('❌ Failed to generate test cases.');
+    }
+
+    setLoading(false);
   };
 
   return (
-    <div className={`min-h-screen px-4 py-8 ${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-black'}`}>
-      <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <img src={logo} alt="BK Logo" className="w-40 sm:w-56" />
-          <label className="flex items-center space-x-2">
-            <input type="checkbox" checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
+    <div className={`${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-black'} min-h-screen px-4 py-6`}>
+      <div className="max-w-3xl mx-auto text-center">
+        <img src={bkLogo} alt="Burger King Logo" className="mx-auto w-48 h-auto mb-4" />
+        
+        <div className="flex justify-end mb-4">
+          <label className="inline-flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={darkMode}
+              onChange={() => setDarkMode(!darkMode)}
+              className="form-checkbox"
+            />
             <span>Dark Mode</span>
           </label>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold flex items-center">
-          🧪 Test Case Generator
-        </h1>
+        <h1 className="text-3xl font-bold mb-4">🧪 Test Case Generator</h1>
 
-        <div className="space-y-4">
-          <label className="flex items-center space-x-2">
+        <div className="mb-4 text-left">
+          <label className="inline-flex items-center space-x-2">
             <input
               type="checkbox"
               checked={gherkinFormat}
@@ -50,42 +62,30 @@ function App() {
             />
             <span>Gherkin Format</span>
           </label>
-
-          <textarea
-            rows="4"
-            placeholder="Paste acceptance criteria or feature"
-            className="w-full p-2 border rounded"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-          />
-
-          <button
-            onClick={generateTestCases}
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
-          >
-            Generate Gherkin Test Cases
-          </button>
         </div>
 
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold">Generated Test Cases:</h2>
-          <p className="text-yellow-600 mt-2">
+        <textarea
+          rows={4}
+          placeholder="Paste acceptance criteria or feature description..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          className="w-full p-3 border border-gray-300 rounded-md text-black"
+        />
+
+        <button
+          onClick={generateTestCases}
+          disabled={loading}
+          className="mt-4 px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          {loading ? 'Generating...' : 'Generate Gherkin Test Cases'}
+        </button>
+
+        <div className="mt-6 text-left">
+          <h2 className="text-lg font-semibold">Generated Test Cases:</h2>
+          <p className="text-sm text-yellow-500 mt-1">
             ⚠️ These test cases are generated by AI and may still contain errors. Please review with your human brain 🧠.
           </p>
-          <ul className="list-disc ml-6 mt-4 space-y-1">
-            {testCases.map((tc, i) => (
-              <li key={i}>{tc}</li>
-            ))}
-          </ul>
-
-          {testCases.length > 0 && (
-            <button
-              onClick={() => exportExcel(testCases)}
-              className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded shadow-md mt-4"
-            >
-              📤 Export to Excel
-            </button>
-          )}
+          <pre className="mt-2 p-3 bg-gray-100 text-black rounded whitespace-pre-wrap">{output}</pre>
         </div>
       </div>
     </div>
