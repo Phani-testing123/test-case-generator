@@ -18,26 +18,36 @@ const App = () => {
       const response = await axios.post(
         'https://test-case-backend.onrender.com/generate-test-cases',
         {
-          input: `${input}
-Please generate ${showGherkin ? 'Gherkin format' : 'Normal plain text'} test cases including positive, negative, and edge cases with:
-- Title
-- Preconditions (if any)
-- Step-by-step actions
-- ✅ Expected Result for each case
-Add an empty line between each test case.`
-
+          input: `${input}\nPlease generate ${showGherkin ? 'Gherkin format' : 'Normal plain text'} test cases including positive, negative and edge cases with detailed steps.`
         }
       );
 
   const outputLines = response.data.output
   .split('\n')
-  .flatMap((line) =>
-    /^Scenario:/i.test(line.trim()) || /^(Positive|Negative|Edge) Test Case/i.test(line.trim())
-      ? ['', line]
-      : [line]
-  )
-  .filter((line) => line.trim() !== '');
-   setTestCases(outputLines);
+  .map(line => line.trim())
+  .reduce((acc, line, index, arr) => {
+    const isNewTestCase = /^Scenario:/i.test(line) ||
+      /^(Positive|Negative|Edge)\s+Test\s+Case/i.test(line) ||
+      /^Test Case \d+:/i.test(line);
+
+    // Skip completely blank lines
+    if (line === '') return acc;
+
+    // Add spacing before new test cases (except first line)
+    if (isNewTestCase && acc.length > 0 && acc[acc.length - 1] !== '') {
+      acc.push('');
+    }
+
+    acc.push(line);
+    return acc;
+  }, [])
+  .filter((line, i, arr) => {
+    // Prevent multiple empty lines in a row
+    return !(line === '' && arr[i - 1] === '');
+  });
+
+setTestCases(outputLines);
+
     } catch (error) {
       console.error('Error:', error);
       setTestCases(['❌ Failed to generate test cases. Try again later.']);
@@ -107,9 +117,10 @@ Add an empty line between each test case.`
 
             <div className="bg-gray-800 rounded-lg p-4 overflow-auto max-h-[400px] whitespace-pre-wrap text-sm border border-gray-700">
               {testCases.map((line, index) => (
-   <div key={index} className="mb-2 whitespace-pre-wrap">
-    {line.trim() === '' ? <br /> : line}
+  <div
+    key={index}
     className={line.trim().toLowerCase().startsWith('scenario:') ? 'mt-4 font-semibold' : ''}
+  >
     {line}
   </div>
 ))}
