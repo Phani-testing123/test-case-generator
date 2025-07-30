@@ -7,7 +7,7 @@ const App = () => {
   const [testCases, setTestCases] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showGherkin, setShowGherkin] = useState(true);
-  const [scenarioCount, setScenarioCount] = useState(10); // Default to 10 scenarios
+  const [scenarioCount, setScenarioCount] = useState(5); // Default to 5 scenarios
 
 
   const handleGenerate = async () => {
@@ -18,7 +18,7 @@ const App = () => {
       const response = await axios.post(
         'https://test-case-backend.onrender.com/generate-test-cases',
         {
-          input: `${input}\nPlease generate ${scenarioCount} ${showGherkin ? 'Gherkin format' : 'plain text'} test cases including positive, negative, and edge cases with detailed steps.`
+          input: `${input}\nPlease generate 5 ${showGherkin ? 'Gherkin format' : 'plain text'} test cases including positive, negative, and edge cases with detailed steps.`
         }
       );
 
