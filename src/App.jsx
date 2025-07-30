@@ -24,12 +24,20 @@ const App = () => {
 
   const outputLines = response.data.output
   .split('\n')
-  .flatMap((line) =>
-    /^Scenario:/i.test(line.trim()) || /^(Positive|Negative|Edge) Test Case/i.test(line.trim())
-      ? ['', line]
-      : [line]
-  )
-  .filter((line) => line.trim() !== '');
+  .flatMap((line) => {
+    const trimmed = line.trim();
+    if (
+      /^Scenario:/i.test(trimmed) ||
+      /^(Positive|Negative|Edge) Test Case[:]?/i.test(trimmed)
+    ) {
+      return ['', trimmed]; // Add space before new test case
+    } else if (/^Expected result[:]?/i.test(trimmed)) {
+      return [trimmed, '']; // Add space after expected result
+    }
+    return [trimmed];
+  })
+  .filter((line) => line !== '');
+
    setTestCases(outputLines);
     } catch (error) {
       console.error('Error:', error);
