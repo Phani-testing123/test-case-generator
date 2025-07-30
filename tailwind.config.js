@@ -1,35 +1,30 @@
-// tailwind.config.js
-
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}"
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class', // Enables dark mode using a class on <html>
   theme: {
     extend: {
       colors: {
-        primary: '#3B82F6', // blue-500
-        secondary: '#10B981', // green-500
-        background: '#F3F4F6', // gray-100
-        foreground: '#1F2937', // gray-800
+        brand: {
+          DEFAULT: "#00bcd4", // Custom branding color
+        },
+        bgDark: "#0f172a",
+        cardDark: "#1e293b",
       },
-      typography: (theme) => ({
-        DEFAULT: {
-          css: {
-            color: theme('colors.gray.800'),
-            a: { color: theme('colors.blue.500') },
-          },
-        },
-        dark: {
-          css: {
-            color: theme('colors.gray.100'),
-            a: { color: theme('colors.blue.400') },
-          },
-        },
-      }),
+      fontFamily: {
+        sans: ["Inter", "ui-sans-serif", "system-ui"],
+      },
+      spacing: {
+        '128': '32rem',
+        '144': '36rem',
+      },
     },
   },
-  darkMode: 'class', // or 'media'
-  plugins: [require('@tailwindcss/typography')],
-};
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/typography'),
+  ],
+}
