@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { exportExcel } from './utils/exportExcel';
 import burgerKingLogo from './assets/burger-king-logo.png';
+import logo from './assets/burger-king-logo.png';
 
 
 
