@@ -1,118 +1,93 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { exportExcel } from './utils/exportExcel';
-import './index.css';
 import logo from './assets/burger-king-logo.png';
-import { saveAs } from 'file-saver';
-import * as XLSX from 'xlsx';
 
-export default function App() {
-  const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
-  const [isGherkin, setIsGherkin] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+const App = () => {
+  const [inputText, setInputText] = useState('');
+  const [testCases, setTestCases] = useState([]);
+  const [isGherkinFormat, setIsGherkinFormat] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle('dark', !darkMode);
-  };
-
-  const handleSubmit = async () => {
-    const response = await fetch('https://test-case-backend.onrender.com/generate-test-cases', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input, gherkin: isGherkin })
-    });
-    const data = await response.json();
-    setOutput(data.testCases);
-  };
-
-  const handleExport = () => {
-    const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
-    saveAs(blob, 'test-cases.txt');
-  };
-
-  const handleExportExcel = () => {
-    const rows = output.split('\n').map(line => [line]);
-    const worksheet = XLSX.utils.aoa_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Cases');
-    XLSX.writeFile(workbook, 'test-cases.xlsx');
+  const generateTestCases = async () => {
+    try {
+      const response = await axios.post(
+        'https://test-case-backend-one.vercel.app/api/generate-test-cases',
+        {
+          text: inputText,
+          isGherkinFormat,
+        }
+      );
+      setTestCases(response.data.testCases);
+    } catch (error) {
+      console.error('Error generating test cases:', error);
+    }
   };
 
   return (
-    <div className={`min-h-screen p-6 ${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-black'}`}>
+    <div className={isDarkMode ? 'dark bg-gray-900 text-white min-h-screen p-4' : 'bg-white text-black min-h-screen p-4'}>
       <div className="flex justify-between items-center mb-6">
-        <img src={logo} alt="Burger King Logo" className="w-40 h-auto" />
-        <div className="flex items-center space-x-4">
-          <label className="flex items-center text-sm font-medium">
-            <input
-              type="checkbox"
-              checked={darkMode}
-              onChange={toggleDarkMode}
-              className="mr-2"
-            />
-            Dark Mode
-          </label>
-        </div>
+        <img src={logo} alt="Burger King Logo" className="h-20" />
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={isDarkMode} onChange={() => setIsDarkMode(!isDarkMode)} />
+          Dark Mode
+        </label>
       </div>
 
-      <h1 className="text-3xl font-bold mb-4">Test Case Generator</h1>
+      <h1 className="text-3xl font-bold mb-4 flex items-center">
+        <span role="img" aria-label="Test">🧪</span> Test Case Generator
+      </h1>
 
-      <label className="flex items-center mb-4">
-        <input
-          type="checkbox"
-          checked={isGherkin}
-          onChange={() => setIsGherkin(!isGherkin)}
-          className="mr-2"
-        />
-        Gherkin Format
-      </label>
-
-      <textarea
-        className="w-full p-3 border rounded-md mb-4 text-black"
-        rows="5"
-        placeholder="Paste acceptance criteria or feature description..."
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-      ></textarea>
-
-      <button
-        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-md mr-4"
-        onClick={handleSubmit}
-      >
-        Generate {isGherkin ? 'Gherkin' : 'Regular'} Test Cases
-      </button>
-
-      <button
-        onClick={handleExport}
-        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-md mr-2"
-      >
-        Export TXT
-      </button>
-      <button
-        onClick={handleExportExcel}
-        className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold px-4 py-2 rounded-md"
-      >
-        Export Excel
-      </button>
+      <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md shadow-md">
+        <label className="block mb-2">
+          <input
+            type="checkbox"
+            checked={isGherkinFormat}
+            onChange={() => setIsGherkinFormat(!isGherkinFormat)}
+            className="mr-2"
+          />
+          Gherkin Format
+        </label>
+        <textarea
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="Paste acceptance criteria or feature description..."
+          className="w-full h-32 p-2 border rounded mb-4 dark:text-black"
+        ></textarea>
+        <button
+          onClick={generateTestCases}
+          className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded shadow-md"
+        >
+          Generate {isGherkinFormat ? 'Gherkin' : 'Standard'} Test Cases
+        </button>
+      </div>
 
       <div className="mt-6">
-        <h2 className="text-xl font-semibold mb-2">Generated Test Cases:</h2>
-        <p className="text-sm text-yellow-500 mb-2">
+        <h2 className="text-2xl font-semibold mb-2">Generated Test Cases:</h2>
+        <p className="text-yellow-600 dark:text-yellow-400">
           ⚠️ These test cases are generated by AI and may still contain errors. Please review with your human brain 🧠.
         </p>
-        <pre className="whitespace-pre-wrap break-words border border-gray-300 dark:border-gray-700 p-4 rounded-md bg-gray-50 dark:bg-gray-800">
-          {output || 'No test cases generated yet.'}
-        </pre>
+        <ul className="list-disc pl-5 mt-2 space-y-2">
+          {testCases.length > 0 ? (
+            testCases.map((testCase, index) => (
+              <li key={index}>{testCase}</li>
+            ))
+          ) : (
+            <p className="italic text-gray-600">No test cases generated yet.</p>
+          )}
+        </ul>
+
+        {testCases.length > 0 && (
+          <button
+            onClick={() => exportExcel(testCases)}
+            className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded shadow-md mt-4"
+          >
+            📤 Export to Excel
+          </button>
+        )}
       </div>
     </div>
-    {testCases.length > 0 && (
-  <button
-    onClick={() => exportExcel(testCases)}
-    className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded shadow-md mt-4"
-  >
-    📤 Export to Excel
-  </button>
-)}
   );
-}
+};
+
+export default App;
