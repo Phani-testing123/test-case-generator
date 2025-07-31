@@ -14,9 +14,6 @@ const App = () => {
   const [openaiCases, setOpenaiCases] = useState([]);
   const [geminiCases, setGeminiCases] = useState([]);
   const [claudeCases, setClaudeCases] = useState([]);
-  const [openaiSummary, setOpenaiSummary] = useState('');
-  const [geminiSummary, setGeminiSummary] = useState('');
-  const [claudeSummary, setClaudeSummary] = useState('');
   const [scenarioCount, setScenarioCount] = useState(5);
   const [loginCredentials, setLoginCredentials] = useState('');
   const [selectedModels, setSelectedModels] = useState({ openai: true, gemini: false, claude: false });
@@ -24,37 +21,41 @@ const App = () => {
 
   // --- PARSING FUNCTION (GHERKIN ONLY) ---
   const parseAIOutput = (output) => {
-    if (!output || !output.trim()) return { cases: [], summary: '' };
+    if (!output || !output.trim()) return { cases: [] };
 
-    let summary = '';
-    let casesText = output;
-    const summaryMatch = output.match(/coverage summary:/i);
-    if (summaryMatch) {
-        const summaryIndex = summaryMatch.index;
-        casesText = output.substring(0, summaryIndex);
-        summary = output.substring(summaryIndex).replace(/coverage summary:/i, '').trim();
-    }
-
-    const chunks = casesText.split(/\n?(?=Scenario:)/im);
+    const chunks = output.split(/\n?(?=Scenario:)/im);
     const testCaseChunks = chunks.filter(chunk => chunk.trim().startsWith("Scenario:"));
 
-    if (testCaseChunks.length === 0 && casesText.trim()) {
-      testCaseChunks.push(casesText);
+    if (testCaseChunks.length === 0 && output.trim()) {
+      testCaseChunks.push(output);
     }
 
     const cases = testCaseChunks.map(textChunk => {
       const cleanChunk = textChunk.replace(/\*\*/g, '');
       const lines = cleanChunk.trim().split('\n').map(l => l.trim());
       let title = lines.shift() || 'Untitled';
-      title = title.replace(/^(Scenario:|Test Scenario \d+:)/i, '').trim();
+      title = title.replace(/^(Scenario:)/i, '').trim();
       
+      // ✅ NEW: Extract new metadata fields
+      const priorityMatch = textChunk.match(/Priority:\s*(High|Medium|Low)/i);
+      const feasibilityMatch = textChunk.match(/Automation Feasibility:\s*(\d+\/10)/i);
+      const bugTitleMatch = textChunk.match(/Suggested Bug Title:\s*(.*)/i);
+
+      // Filter out metadata lines from the main steps
+      const bddLines = lines.filter(line => 
+        !line.match(/Priority:|Automation Feasibility:|Suggested Bug Title:/i)
+      );
+
       return {
         id: generateId(),
         title: title,
-        lines: lines.filter(Boolean),
+        lines: bddLines.filter(Boolean),
+        priority: priorityMatch ? priorityMatch[1] : 'N/A',
+        feasibility: feasibilityMatch ? feasibilityMatch[1] : 'N/A',
+        bugTitle: bugTitleMatch ? bugTitleMatch[1] : null,
       };
     });
-    return { cases, summary };
+    return { cases };
   };
 
   // --- GENERATION LOGIC ---
@@ -72,20 +73,22 @@ const App = () => {
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
     
-    const prompt = `You are an expert BDD practitioner. Your task is to generate precise Gherkin scenarios based on the following requirement.
+    // ✅ UPDATED PROMPT: Asks for new metadata fields
+    const prompt = `You are an expert QA Engineer. Your task is to generate precise Gherkin scenarios based on the following requirement.
 
 **Requirement:**
 ${input}
 
 ${personaText}Please generate ${scenarioCount} test cases.
 
-**CRITICAL FORMATTING RULES:**
-1. Your entire response MUST be valid Gherkin format.
-2. You MUST NOT include a "Feature:" line.
-3. Every test case MUST begin on a new line with the keyword "Scenario:".
-4. You MUST use the keywords "Given", "When", "Then", "And", "But".
-5. You MUST NOT use any markdown formatting (like **, _, \`\`\`). Your response must be plain text only.
-6. After all scenarios, add a final section under the heading "Coverage Summary:". This summary MUST be a descriptive paragraph explaining what types of scenarios (e.g., positive, negative, edge cases) were covered. It MUST NOT be a simple count.`;
+**CRITICAL FORMATTING RULES FOR EACH SCENARIO:**
+1. Start with "Scenario: [Title]".
+2. Follow with Gherkin steps (Given, When, Then).
+3. After the steps, on new lines, add the following metadata:
+   - "Priority: [High, Medium, or Low]"
+   - "Automation Feasibility: [Score from 1/10 to 10/10]"
+   - If it's a negative scenario, add "Suggested Bug Title: [A concise bug title]"
+4. You MUST NOT use any markdown formatting (like **).`;
 
     try {
       const apiCalls = [];
@@ -106,9 +109,9 @@ ${personaText}Please generate ${scenarioCount} test cases.
 
       const results = await Promise.allSettled(apiCalls);
 
-      let newOpenaiData = { cases: [], summary: '' };
-      let newGeminiData = { cases: [], summary: '' };
-      let newClaudeData = { cases: [], summary: '' };
+      let newOpenaiData = { cases: [] };
+      let newGeminiData = { cases: [] };
+      let newClaudeData = { cases: [] };
       const failedModels = [];
 
       results.forEach((result, index) => {
@@ -127,9 +130,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
       setOpenaiCases(newOpenaiData.cases);
       setGeminiCases(newGeminiData.cases);
       setClaudeCases(newClaudeData.cases);
-      setOpenaiSummary(newOpenaiData.summary);
-      setGeminiSummary(newGeminiData.summary);
-      setClaudeSummary(newClaudeData.summary);
 
       if (failedModels.length > 0) {
         const errorMessage = `❌ ${failedModels.join(' & ')} failed to generate results. Please try unchecking it or check your backend service.`;
@@ -158,16 +158,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
     }
   };
 
-  const formatCasesForDisplay = (cases) => {
-    if (!cases || cases.length === 0) return '';
-    return cases.map(tc => `Scenario: ${tc.title}\n\n${tc.lines.join('\n')}`)
-                .join('\n\n=====================\n\n');
-  };
-
-  const openaiFormattedText = useMemo(() => formatCasesForDisplay(openaiCases), [openaiCases]);
-  const geminiFormattedText = useMemo(() => formatCasesForDisplay(geminiCases), [geminiCases]);
-  const claudeFormattedText = useMemo(() => formatCasesForDisplay(claudeCases), [claudeCases]);
-
+  // --- EXPORT AND COPY FUNCTIONS ---
   const exportToExcel = () => {
     const allCases = [...openaiCases, ...geminiCases, ...claudeCases];
     if (allCases.length === 0) {
@@ -175,13 +166,17 @@ ${personaText}Please generate ${scenarioCount} test cases.
       return;
     }
     
+    // ✅ UPDATED: Export now includes the new metadata
     const dataForExport = allCases.map(tc => ({ 
       'Scenario Title': tc.title, 
       'BDD Steps': tc.lines.join('\n'),
+      'Priority': tc.priority,
+      'Automation Feasibility': tc.feasibility,
+      'Suggested Bug Title': tc.bugTitle || 'N/A',
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataForExport);
-    ws['!cols'] = [{ wch: 60 }, { wch: 60 }];
+    ws['!cols'] = [{ wch: 50 }, { wch: 60 }, { wch: 15 }, { wch: 20 }, { wch: 60 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Test Cases");
     XLSX.writeFile(wb, 'ai_generated_test_cases.xlsx');
@@ -189,12 +184,21 @@ ${personaText}Please generate ${scenarioCount} test cases.
   };
 
   const copyToClipboard = () => {
-    const textToCopy = [openaiFormattedText, geminiFormattedText, claudeFormattedText].filter(Boolean).join('\n\n');
-    if (!textToCopy) {
+    const allCases = [...openaiCases, ...geminiCases, ...claudeCases];
+    if (allCases.length === 0) {
       toast.error('No results to copy.');
       return;
     }
-    navigator.clipboard.writeText(textToCopy);
+    
+    const textToCopy = allCases.map(tc => {
+        let text = `Scenario: ${tc.title}\n${tc.lines.join('\n')}`;
+        text += `\nPriority: ${tc.priority}`;
+        text += `\nAutomation Feasibility: ${tc.feasibility}`;
+        if(tc.bugTitle) text += `\nSuggested Bug Title: ${tc.bugTitle}`;
+        return text;
+    }).join('\n\n=====================\n\n');
+
+    navigator.clipboard.writeText(textToCopy.trim());
     toast.success('Results copied!');
   };
 
@@ -203,9 +207,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
     setOpenaiCases([]);
     setGeminiCases([]);
     setClaudeCases([]);
-    setOpenaiSummary('');
-    setGeminiSummary('');
-    setClaudeSummary('');
     setError(null);
     setLoginCredentials('');
     setScenarioCount(5);
@@ -214,30 +215,49 @@ ${personaText}Please generate ${scenarioCount} test cases.
     toast('Cleared all data.', { icon: '🗑️' });
   };
   
-  const ResultsColumn = ({ title, formattedText, summary }) => {
+  // --- SUB-COMPONENT FOR RENDERING RESULTS ---
+  const ResultsColumn = ({ title, cases }) => {
     const modelKey = title.toLowerCase().includes('openai') ? 'openai' : title.toLowerCase().includes('gemini') ? 'gemini' : 'claude';
     if (!selectedModels[modelKey]) return null;
 
-    if (!formattedText && !summary && !loading) {
+    if (cases.length === 0 && !loading) {
         return <div className='text-center text-gray-500 p-4 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg'>No results from {title.split(' ')[0]}.</div>
     }
+
+    const priorityColor = {
+        High: 'bg-red-500/20 text-red-300 border-red-500/30',
+        Medium: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+        Low: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+        'N/A': 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+    };
 
     return (
       <div className='space-y-4'>
         <h3 className='text-center font-bold text-lg text-blue-300'>{title}</h3>
-        {formattedText && (
-            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 h-[50vh] overflow-y-auto">
-              <pre className="whitespace-pre-wrap text-sm text-gray-300 font-sans">
-                {formattedText}
-              </pre>
+        {cases.map((tc) => (
+          <div key={tc.id} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
+            <p className="font-bold text-gray-200">{tc.title}</p>
+            <div className="whitespace-pre-wrap text-sm text-gray-300 pt-3 border-t border-gray-700">{tc.lines.join('\n')}</div>
+            
+            {/* ✅ NEW: Metadata display */}
+            <div className="pt-3 border-t border-gray-700 space-y-2">
+                <div className="flex items-center gap-4 text-xs">
+                    <div className={`px-2 py-1 rounded-full border ${priorityColor[tc.priority]}`}>
+                        <strong>Priority:</strong> {tc.priority}
+                    </div>
+                    <div className="px-2 py-1 rounded-full border bg-gray-500/20 text-gray-300 border-gray-500/30">
+                        <strong>Feasibility:</strong> {tc.feasibility}
+                    </div>
+                </div>
+                {tc.bugTitle && (
+                    <div className="text-xs">
+                        <strong className="text-red-400">Suggested Bug Title:</strong>
+                        <p className="italic text-gray-400 pl-2">{tc.bugTitle}</p>
+                    </div>
+                )}
             </div>
-        )}
-        {summary && (
-            <div className="p-3 bg-gray-700/50 rounded-lg text-sm italic border border-gray-600">
-                <p className="font-semibold mb-1 text-yellow-400">Coverage Summary:</p>
-                <p className="text-gray-300">{summary}</p>
-            </div>
-        )}
+          </div>
+        ))}
       </div>
     );
   };
@@ -319,9 +339,9 @@ ${personaText}Please generate ${scenarioCount} test cases.
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <ResultsColumn title="OpenAI Results" formattedText={openaiFormattedText} summary={openaiSummary} />
-                    <ResultsColumn title="Gemini Results" formattedText={geminiFormattedText} summary={geminiSummary} />
-                    <ResultsColumn title="Claude Results" formattedText={claudeFormattedText} summary={claudeSummary} />
+                    <ResultsColumn title="OpenAI Results" cases={openaiCases} />
+                    <ResultsColumn title="Gemini Results" cases={geminiCases} />
+                    <ResultsColumn title="Claude Results" cases={claudeCases} />
                 </div>
               </div>
             )}
