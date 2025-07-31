@@ -28,6 +28,7 @@ const App = () => {
 
     let summary = '';
     let casesText = output;
+    // Find and extract the coverage summary
     const summaryMatch = output.match(/coverage summary:/i);
     if (summaryMatch) {
         const summaryIndex = summaryMatch.index;
@@ -35,27 +36,24 @@ const App = () => {
         summary = output.substring(summaryIndex).replace(/coverage summary:/i, '').trim();
     }
 
-    // ✅ FINAL FIX: This is a much more robust way to split scenarios.
-    // It splits the entire block by "Scenario:", which is a more reliable delimiter.
-    const testCaseChunks = casesText.split(/Scenario:/im)
-                                     .slice(1) // Discard anything before the first "Scenario:"
-                                     .filter(chunk => chunk.trim()); // Ensure no empty chunks
+    const chunks = casesText.split(/Scenario:/im);
+    const testCaseChunks = chunks.slice(1).map(chunk => "Scenario:" + chunk);
 
     if (testCaseChunks.length === 0 && casesText.trim()) {
-      // Fallback if the primary split method fails
       testCaseChunks.push(casesText);
     }
 
     const cases = testCaseChunks.map(textChunk => {
       const lines = textChunk.trim().split('\n').map(l => l.trim());
       let title = lines.shift() || 'Untitled';
+      title = title.replace(/^(Scenario:)/i, '').trim();
       
       const priorityMatch = textChunk.match(/Priority:\s*(High|Medium|Low)/i);
       const bddLines = lines.filter(line => !line.match(/Priority:/i));
 
       return {
         id: generateId(),
-        title: title.replace(/\*\*/g, '').trim(),
+        title: title,
         lines: bddLines.filter(Boolean),
         priority: priorityMatch ? priorityMatch[1] : 'N/A',
       };
@@ -86,12 +84,10 @@ ${input}
 ${personaText}Please generate ${scenarioCount} test cases.
 
 **CRITICAL FORMATTING RULES:**
-1. Your entire response MUST consist of Gherkin scenarios and an optional summary.
-2. You MUST NOT include a "Feature:" line or any other text before the first scenario.
-3. Every test case MUST begin on a new line with the keyword "Scenario:".
-4. After the Gherkin steps of each scenario, add "Priority: [High, Medium, or Low]".
-5. After generating ALL scenarios, you MAY add a final section under the heading "Coverage Summary:".
-6. You MUST NOT use any markdown formatting (like **).`;
+1. Each scenario MUST start with "Scenario: [Title]".
+2. After the Gherkin steps of each scenario, add "Priority: [High, Medium, or Low]".
+3. After generating ALL scenarios, add a final section under the heading "Coverage Summary:". This summary MUST be a descriptive paragraph explaining what types of scenarios (e.g., positive, negative, edge cases) were covered. It MUST NOT be a simple count.
+4. You MUST NOT use any markdown formatting (like **).`;
 
     try {
       const apiCalls = [];
@@ -164,16 +160,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
     }
   };
 
-  const formatCasesForDisplay = (cases) => {
-    if (!cases || cases.length === 0) return '';
-    return cases.map(tc => `Scenario: ${tc.title}\n\n${tc.lines.join('\n')}`)
-                .join('\n\n=====================\n\n');
-  };
-
-  const openaiFormattedText = formatCasesForDisplay(openaiCases);
-  const geminiFormattedText = formatCasesForDisplay(geminiCases);
-  const claudeFormattedText = formatCasesForDisplay(claudeCases);
-
   const exportToExcel = () => {
     const allCases = [...openaiCases, ...geminiCases, ...claudeCases];
     if (allCases.length === 0) {
@@ -196,12 +182,19 @@ ${personaText}Please generate ${scenarioCount} test cases.
   };
 
   const copyToClipboard = () => {
-    const textToCopy = [openaiFormattedText, geminiFormattedText, claudeFormattedText].filter(Boolean).join('\n\n');
-    if (!textToCopy) {
+    const allCases = [...openaiCases, ...geminiCases, ...claudeCases];
+    if (allCases.length === 0) {
       toast.error('No results to copy.');
       return;
     }
-    navigator.clipboard.writeText(textToCopy);
+    
+    const textToCopy = allCases.map(tc => {
+        let text = `Scenario: ${tc.title}\n${tc.lines.join('\n')}`;
+        text += `\nPriority: ${tc.priority}`;
+        return text;
+    }).join('\n\n=====================\n\n');
+
+    navigator.clipboard.writeText(textToCopy.trim());
     toast.success('Results copied!');
   };
 
@@ -221,11 +214,12 @@ ${personaText}Please generate ${scenarioCount} test cases.
     toast('Cleared all data.', { icon: '🗑️' });
   };
   
-  const ResultsColumn = ({ title, formattedText, summary }) => {
+  // --- SUB-COMPONENT FOR RENDERING RESULTS ---
+  const ResultsColumn = ({ title, cases, summary }) => {
     const modelKey = title.toLowerCase().includes('openai') ? 'openai' : title.toLowerCase().includes('gemini') ? 'gemini' : 'claude';
     if (!selectedModels[modelKey]) return null;
 
-    if (!formattedText && !summary && !loading) {
+    if (cases.length === 0 && !loading) {
         return <div className='text-center text-gray-500 p-4 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg'>No results from {title.split(' ')[0]}.</div>
     }
 
@@ -239,15 +233,20 @@ ${personaText}Please generate ${scenarioCount} test cases.
     return (
       <div className='space-y-4'>
         <h3 className='text-center font-bold text-lg text-blue-300'>{title}</h3>
-        {formattedText && (
-            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 h-[50vh] overflow-y-auto">
-              <pre className="whitespace-pre-wrap text-sm text-gray-300 font-sans">
-                {formattedText}
-              </pre>
+        {cases.map((tc) => (
+          <div key={tc.id} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
+            <p className="font-bold text-gray-200">{tc.title}</p>
+            <div className="whitespace-pre-wrap text-sm text-gray-300 pt-3 border-t border-gray-700">{tc.lines.join('\n')}</div>
+            
+            <div className="pt-3 border-t border-gray-700 flex items-center gap-4 text-xs">
+                <div className={`px-2 py-1 rounded-full border ${priorityColor[tc.priority]}`}>
+                    <strong>Priority:</strong> {tc.priority}
+                </div>
             </div>
-        )}
+          </div>
+        ))}
         {summary && (
-            <div className="p-3 bg-gray-700/50 rounded-lg text-sm italic border border-gray-600">
+            <div className="mt-4 p-3 bg-gray-700/50 rounded-lg text-sm italic border border-gray-600">
                 <p className="font-semibold mb-1 text-yellow-400">Coverage Summary:</p>
                 <p className="text-gray-300">{summary}</p>
             </div>
@@ -262,6 +261,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
       <div className="min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8">
         <div className="max-w-screen-xl mx-auto space-y-8">
           <div className="flex items-center justify-center gap-4">
+            {/* ✅ NEW: Replaced img tag with an inline SVG for a robot icon */}
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 8V4H8V2h8v2h-4Z" />
               <rect x="4" y="8" width="16" height="12" rx="2" />
