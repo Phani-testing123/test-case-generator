@@ -248,7 +248,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
   return (
     <>
       <Toaster position="top-center" reverseOrder={false} />
-      {/* ✅ NEW: Style tag for the foreground image */}
+      {/* ✅ FIXED: Style tag now uses a self-contained Base64 SVG for reliability */}
       <style>{`
         .main-container::before {
           content: '';
@@ -257,9 +257,9 @@ ${personaText}Please generate ${scenarioCount} test cases.
           left: 0;
           right: 0;
           bottom: 0;
-          background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+          background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiNmZmYiLz48L3N2Zz4=");
           background-repeat: repeat;
-          opacity: 0.05;
+          opacity: 0.03;
           z-index: 0;
           pointer-events: none;
         }
