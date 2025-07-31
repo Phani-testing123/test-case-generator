@@ -28,7 +28,6 @@ const App = () => {
 
     let summary = '';
     let casesText = output;
-    // Find and extract the coverage summary
     const summaryMatch = output.match(/coverage summary:/i);
     if (summaryMatch) {
         const summaryIndex = summaryMatch.index;
@@ -258,10 +257,19 @@ ${personaText}Please generate ${scenarioCount} test cases.
   return (
     <>
       <Toaster position="top-center" reverseOrder={false} />
-      <div className="min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8">
-        <div className="max-w-screen-xl mx-auto space-y-8">
+      {/* ✅ UPDATED: Added a wrapper div for the foreground image */}
+      <div className="relative min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8 overflow-hidden">
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80' width='80' height='80'%3E%3Cpath fill='%23ffffff' fill-opacity='0.05' d='M14 16.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3zM31 16.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3zM48 16.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3zM65 16.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3zM14 33.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3zM31 33.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3zM48 33.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3zM65 33.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3zM14 50.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3zM31 50.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3zM48 50.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3zM65 50.5c0-1.7-1.3-3-3-3s-3 1.3-3 3 1.3 3 3 3 3-1.3 3-3z'/%3E%3C/svg%3E")`,
+            backgroundRepeat: 'repeat',
+            opacity: 0.1,
+            pointerEvents: 'none',
+          }}
+        ></div>
+        <div className="relative z-10 max-w-screen-xl mx-auto space-y-8">
           <div className="flex items-center justify-center gap-4">
-            {/* ✅ NEW: Replaced img tag with an inline SVG for a robot icon */}
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 8V4H8V2h8v2h-4Z" />
               <rect x="4" y="8" width="16" height="12" rx="2" />
