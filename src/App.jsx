@@ -9,7 +9,7 @@ const generateId = () => `tc_${Date.now()}_${Math.random().toString(36).substr(2
 const App = () => {
   // --- STATE MANAGEMENT ---
   const [input, setInput] = useState('');
-  const [prerequisites, setPrerequisites] = useState(''); // ✅ NEW: State for prerequisites
+  const [prerequisites, setPrerequisites] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [openaiCases, setOpenaiCases] = useState([]);
@@ -36,17 +36,21 @@ const App = () => {
         summary = output.substring(summaryIndex).replace(/coverage summary:/i, '').trim();
     }
 
-    const chunks = casesText.split(/Scenario:/im);
-    const testCaseChunks = chunks.slice(1).map(chunk => "Scenario:" + chunk);
+    // ✅ FINAL FIX: More robust splitting that handles inconsistent AI line breaks
+    const chunks = casesText.split(/\n?(?=Scenario:)/im);
+    const testCaseChunks = chunks.filter(chunk => chunk.trim().startsWith("Scenario:"));
 
     if (testCaseChunks.length === 0 && casesText.trim()) {
       testCaseChunks.push(casesText);
     }
 
     const cases = testCaseChunks.map(textChunk => {
-      const lines = textChunk.trim().split('\n').map(l => l.trim());
+      // ✅ FINAL FIX: Aggressively remove all markdown formatting like **
+      const cleanChunk = textChunk.replace(/\*\*/g, '');
+      const lines = cleanChunk.trim().split('\n').map(l => l.trim());
       let title = lines.shift() || 'Untitled';
-      title = title.replace(/^(Scenario:)/i, '').trim();
+      title = title.replace(/^(Scenario:|Test Scenario \d+:)/i, '').trim();
+      
       return {
         id: generateId(),
         title: title,
@@ -70,15 +74,23 @@ const App = () => {
     setError(null);
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
-    // ✅ UPDATED: Include prerequisites in the prompt
     const prerequisitesText = prerequisites.trim() ? `\n\n**Prerequisites & Context:**\n${prerequisites.trim()}` : '';
     
-    const prompt = `You are a meticulous and experienced QA Engineer. Your primary task is to analyze the following user story and acceptance criteria, then generate precise Gherkin test scenarios. Pay close attention to every detail, business rule, and potential edge case.
+    // ✅ FINAL FIX: Extremely strict prompt to prevent bad formatting
+    const prompt = `You are an expert BDD (Behavior-Driven Development) practitioner. Your task is to generate precise Gherkin scenarios based on the following requirement.
 
 **Requirement:**
 ${input}${prerequisitesText}
 
-${personaText}Please generate ${scenarioCount} test cases in Gherkin format. After generating all scenarios, add a final section under the heading "Coverage Summary:" that briefly explains the scope and focus of the generated tests.`;
+${personaText}Please generate ${scenarioCount} test cases.
+
+**CRITICAL FORMATTING RULES:**
+1. Your entire response MUST be valid Gherkin format.
+2. You MUST NOT include a "Feature:" line.
+3. Every test case MUST begin on a new line with the keyword "Scenario:".
+4. You MUST use the keywords "Given", "When", "Then", "And", "But".
+5. You MUST NOT use any markdown formatting (like **, _, \`\`\`). Your response must be plain text only.
+6. After all scenarios, add a final section under the heading "Coverage Summary:".`;
 
     try {
       const apiCalls = [];
@@ -151,7 +163,6 @@ ${personaText}Please generate ${scenarioCount} test cases in Gherkin format. Aft
     }
   };
 
-  // --- FORMATTING & UTILITY FUNCTIONS ---
   const formatCasesForDisplay = (cases) => {
     if (!cases || cases.length === 0) return '';
     return cases.map(tc => `Scenario: ${tc.title}\n${tc.lines.join('\n')}`)
@@ -194,7 +205,7 @@ ${personaText}Please generate ${scenarioCount} test cases in Gherkin format. Aft
 
   const clearAll = () => {
     setInput('');
-    setPrerequisites(''); // ✅ UPDATED: Clear prerequisites
+    setPrerequisites('');
     setOpenaiCases([]);
     setGeminiCases([]);
     setClaudeCases([]);
@@ -209,7 +220,6 @@ ${personaText}Please generate ${scenarioCount} test cases in Gherkin format. Aft
     toast('Cleared all data.', { icon: '🗑️' });
   };
   
-  // --- SUB-COMPONENT FOR RENDERING RESULTS ---
   const ResultsColumn = ({ title, formattedText, summary }) => {
     const modelKey = title.toLowerCase().includes('openai') ? 'openai' : title.toLowerCase().includes('gemini') ? 'gemini' : 'claude';
     if (!selectedModels[modelKey]) return null;
@@ -255,15 +265,12 @@ ${personaText}Please generate ${scenarioCount} test cases in Gherkin format. Aft
               value={input}
               onChange={(e) => setInput(e.target.value)}
             />
-            
-            {/* ✅ NEW: Prerequisites Text Box */}
             <textarea
               className="w-full rounded-lg p-4 bg-gray-900 text-white text-sm sm:text-base resize-y min-h-[80px] focus:ring-2 focus:ring-blue-500 transition"
               placeholder="Optional: Add prerequisites, LD flags, or Figma links for context..."
               value={prerequisites}
               onChange={(e) => setPrerequisites(e.target.value)}
             />
-            
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4 items-start'>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Login Credentials</label>
