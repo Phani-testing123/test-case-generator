@@ -76,7 +76,6 @@ const App = () => {
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
     
-    // ✅ UPDATED PROMPT: Asks for a descriptive coverage summary
     const prompt = `You are an expert QA Engineer. Your task is to generate precise Gherkin scenarios.
 
 **Requirement:**
@@ -246,7 +245,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
             </div>
           </div>
         ))}
-        {/* ✅ NEW: Display the coverage summary */}
         {summary && (
             <div className="mt-4 p-3 bg-gray-700/50 rounded-lg text-sm italic border border-gray-600">
                 <p className="font-semibold mb-1 text-yellow-400">Coverage Summary:</p>
@@ -263,6 +261,14 @@ ${personaText}Please generate ${scenarioCount} test cases.
       <div className="min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8">
         <div className="max-w-screen-xl mx-auto space-y-8">
           <div className="flex items-center justify-center gap-4">
+            {/* ✅ NEW: Replaced img tag with an inline SVG for a robot icon */}
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 8V4H8V2h8v2h-4Z" />
+              <rect x="4" y="8" width="16" height="12" rx="2" />
+              <path d="M8 14v-2" />
+              <path d="M16 14v-2" />
+              <path d="M12 18v-4" />
+            </svg>
             <h1 className="text-3xl sm:text-4xl font-bold text-center">AI Test Case Generator</h1>
           </div>
 
