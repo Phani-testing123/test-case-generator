@@ -36,7 +36,6 @@ const App = () => {
         summary = output.substring(summaryIndex).replace(/coverage summary:/i, '').trim();
     }
 
-    // ✅ FINAL FIX: More robust splitting that handles inconsistent AI line breaks
     const chunks = casesText.split(/\n?(?=Scenario:)/im);
     const testCaseChunks = chunks.filter(chunk => chunk.trim().startsWith("Scenario:"));
 
@@ -45,7 +44,6 @@ const App = () => {
     }
 
     const cases = testCaseChunks.map(textChunk => {
-      // ✅ FINAL FIX: Aggressively remove all markdown formatting like **
       const cleanChunk = textChunk.replace(/\*\*/g, '');
       const lines = cleanChunk.trim().split('\n').map(l => l.trim());
       let title = lines.shift() || 'Untitled';
@@ -76,8 +74,8 @@ const App = () => {
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
     const prerequisitesText = prerequisites.trim() ? `\n\n**Prerequisites & Context:**\n${prerequisites.trim()}` : '';
     
-    // ✅ FINAL FIX: Extremely strict prompt to prevent bad formatting
-    const prompt = `You are an expert BDD (Behavior-Driven Development) practitioner. Your task is to generate precise Gherkin scenarios based on the following requirement.
+    // ✅ UPDATED PROMPT: Stricter rules for the coverage summary
+    const prompt = `You are an expert BDD practitioner. Your task is to generate precise Gherkin scenarios based on the following requirement.
 
 **Requirement:**
 ${input}${prerequisitesText}
@@ -90,7 +88,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
 3. Every test case MUST begin on a new line with the keyword "Scenario:".
 4. You MUST use the keywords "Given", "When", "Then", "And", "But".
 5. You MUST NOT use any markdown formatting (like **, _, \`\`\`). Your response must be plain text only.
-6. After all scenarios, add a final section under the heading "Coverage Summary:".`;
+6. After all scenarios, add a final section under the heading "Coverage Summary:". This summary MUST be a descriptive paragraph explaining what types of scenarios (e.g., positive, negative, edge cases) were covered. It MUST NOT be a simple count.`;
 
     try {
       const apiCalls = [];
@@ -163,9 +161,11 @@ ${personaText}Please generate ${scenarioCount} test cases.
     }
   };
 
+  // --- FORMATTING & UTILITY FUNCTIONS ---
   const formatCasesForDisplay = (cases) => {
     if (!cases || cases.length === 0) return '';
-    return cases.map(tc => `Scenario: ${tc.title}\n${tc.lines.join('\n')}`)
+    // ✅ UPDATED: Added a newline after the title for proper spacing
+    return cases.map(tc => `Scenario: ${tc.title}\n\n${tc.lines.join('\n')}`)
                 .join('\n\n=====================\n\n');
   };
 
@@ -220,6 +220,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
     toast('Cleared all data.', { icon: '🗑️' });
   };
   
+  // --- SUB-COMPONENT FOR RENDERING RESULTS ---
   const ResultsColumn = ({ title, formattedText, summary }) => {
     const modelKey = title.toLowerCase().includes('openai') ? 'openai' : title.toLowerCase().includes('gemini') ? 'gemini' : 'claude';
     if (!selectedModels[modelKey]) return null;
