@@ -9,7 +9,6 @@ const generateId = () => `tc_${Date.now()}_${Math.random().toString(36).substr(2
 const App = () => {
   // --- STATE MANAGEMENT ---
   const [input, setInput] = useState('');
-  const [prerequisites, setPrerequisites] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [openaiCases, setOpenaiCases] = useState([]);
@@ -72,13 +71,11 @@ const App = () => {
     setError(null);
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
-    const prerequisitesText = prerequisites.trim() ? `\n\n**Prerequisites & Context:**\n${prerequisites.trim()}` : '';
     
-    // ✅ UPDATED PROMPT: Stricter rules for the coverage summary
     const prompt = `You are an expert BDD practitioner. Your task is to generate precise Gherkin scenarios based on the following requirement.
 
 **Requirement:**
-${input}${prerequisitesText}
+${input}
 
 ${personaText}Please generate ${scenarioCount} test cases.
 
@@ -161,10 +158,8 @@ ${personaText}Please generate ${scenarioCount} test cases.
     }
   };
 
-  // --- FORMATTING & UTILITY FUNCTIONS ---
   const formatCasesForDisplay = (cases) => {
     if (!cases || cases.length === 0) return '';
-    // ✅ UPDATED: Added a newline after the title for proper spacing
     return cases.map(tc => `Scenario: ${tc.title}\n\n${tc.lines.join('\n')}`)
                 .join('\n\n=====================\n\n');
   };
@@ -205,7 +200,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
 
   const clearAll = () => {
     setInput('');
-    setPrerequisites('');
     setOpenaiCases([]);
     setGeminiCases([]);
     setClaudeCases([]);
@@ -220,7 +214,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
     toast('Cleared all data.', { icon: '🗑️' });
   };
   
-  // --- SUB-COMPONENT FOR RENDERING RESULTS ---
   const ResultsColumn = ({ title, formattedText, summary }) => {
     const modelKey = title.toLowerCase().includes('openai') ? 'openai' : title.toLowerCase().includes('gemini') ? 'gemini' : 'claude';
     if (!selectedModels[modelKey]) return null;
@@ -266,12 +259,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
               value={input}
               onChange={(e) => setInput(e.target.value)}
             />
-            <textarea
-              className="w-full rounded-lg p-4 bg-gray-900 text-white text-sm sm:text-base resize-y min-h-[80px] focus:ring-2 focus:ring-blue-500 transition"
-              placeholder="Optional: Add prerequisites, LD flags, or Figma links for context..."
-              value={prerequisites}
-              onChange={(e) => setPrerequisites(e.target.value)}
-            />
+            
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4 items-start'>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Login Credentials</label>
