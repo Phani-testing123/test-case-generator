@@ -14,6 +14,9 @@ const App = () => {
   const [openaiCases, setOpenaiCases] = useState([]);
   const [geminiCases, setGeminiCases] = useState([]);
   const [claudeCases, setClaudeCases] = useState([]);
+  const [openaiSummary, setOpenaiSummary] = useState('');
+  const [geminiSummary, setGeminiSummary] = useState('');
+  const [claudeSummary, setClaudeSummary] = useState('');
   const [scenarioCount, setScenarioCount] = useState(5);
   const [loginCredentials, setLoginCredentials] = useState('');
   const [selectedModels, setSelectedModels] = useState({ openai: true, gemini: false, claude: false });
@@ -21,28 +24,32 @@ const App = () => {
 
   // --- PARSING FUNCTION (GHERKIN ONLY) ---
   const parseAIOutput = (output) => {
-    if (!output || !output.trim()) return { cases: [] };
+    if (!output || !output.trim()) return { cases: [], summary: '' };
 
-    const chunks = output.split(/\n?(?=Scenario:)/im);
-    const testCaseChunks = chunks.filter(chunk => chunk.trim().startsWith("Scenario:"));
+    let summary = '';
+    let casesText = output;
+    // Find and extract the coverage summary
+    const summaryMatch = output.match(/coverage summary:/i);
+    if (summaryMatch) {
+        const summaryIndex = summaryMatch.index;
+        casesText = output.substring(0, summaryIndex);
+        summary = output.substring(summaryIndex).replace(/coverage summary:/i, '').trim();
+    }
 
-    if (testCaseChunks.length === 0 && output.trim()) {
-      testCaseChunks.push(output);
+    const chunks = casesText.split(/Scenario:/im);
+    const testCaseChunks = chunks.slice(1).map(chunk => "Scenario:" + chunk);
+
+    if (testCaseChunks.length === 0 && casesText.trim()) {
+      testCaseChunks.push(casesText);
     }
 
     const cases = testCaseChunks.map(textChunk => {
-      const cleanChunk = textChunk.replace(/\*\*/g, '');
-      const lines = cleanChunk.trim().split('\n').map(l => l.trim());
+      const lines = textChunk.trim().split('\n').map(l => l.trim());
       let title = lines.shift() || 'Untitled';
-      title = title.replace(/^(Scenario:|Test Scenario \d+:)/i, '').trim();
+      title = title.replace(/^(Scenario:)/i, '').trim();
       
-      // ✅ UPDATED: Extract only Priority metadata
       const priorityMatch = textChunk.match(/Priority:\s*(High|Medium|Low)/i);
-
-      // Filter out metadata lines from the main steps
-      const bddLines = lines.filter(line => 
-        !line.match(/Priority:/i)
-      );
+      const bddLines = lines.filter(line => !line.match(/Priority:/i));
 
       return {
         id: generateId(),
@@ -51,7 +58,7 @@ const App = () => {
         priority: priorityMatch ? priorityMatch[1] : 'N/A',
       };
     });
-    return { cases };
+    return { cases, summary };
   };
 
   // --- GENERATION LOGIC ---
@@ -69,19 +76,18 @@ const App = () => {
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
     
-    // ✅ UPDATED PROMPT: Asks only for Priority
-    const prompt = `You are an expert QA Engineer. Your task is to generate precise Gherkin scenarios based on the following requirement.
+    // ✅ UPDATED PROMPT: Asks for a descriptive coverage summary
+    const prompt = `You are an expert QA Engineer. Your task is to generate precise Gherkin scenarios.
 
 **Requirement:**
 ${input}
 
 ${personaText}Please generate ${scenarioCount} test cases.
 
-**CRITICAL FORMATTING RULES FOR EACH SCENARIO:**
-1. Start with "Scenario: [Title]".
-2. Follow with Gherkin steps (Given, When, Then).
-3. After the steps, on a new line, add the following metadata:
-   - "Priority: [High, Medium, or Low]"
+**CRITICAL FORMATTING RULES:**
+1. Each scenario MUST start with "Scenario: [Title]".
+2. After the Gherkin steps of each scenario, add "Priority: [High, Medium, or Low]".
+3. After generating ALL scenarios, add a final section under the heading "Coverage Summary:". This summary MUST be a descriptive paragraph explaining what types of scenarios (e.g., positive, negative, edge cases) were covered. It MUST NOT be a simple count.
 4. You MUST NOT use any markdown formatting (like **).`;
 
     try {
@@ -103,9 +109,9 @@ ${personaText}Please generate ${scenarioCount} test cases.
 
       const results = await Promise.allSettled(apiCalls);
 
-      let newOpenaiData = { cases: [] };
-      let newGeminiData = { cases: [] };
-      let newClaudeData = { cases: [] };
+      let newOpenaiData = { cases: [], summary: '' };
+      let newGeminiData = { cases: [], summary: '' };
+      let newClaudeData = { cases: [], summary: '' };
       const failedModels = [];
 
       results.forEach((result, index) => {
@@ -124,6 +130,9 @@ ${personaText}Please generate ${scenarioCount} test cases.
       setOpenaiCases(newOpenaiData.cases);
       setGeminiCases(newGeminiData.cases);
       setClaudeCases(newClaudeData.cases);
+      setOpenaiSummary(newOpenaiData.summary);
+      setGeminiSummary(newGeminiData.summary);
+      setClaudeSummary(newClaudeData.summary);
 
       if (failedModels.length > 0) {
         const errorMessage = `❌ ${failedModels.join(' & ')} failed to generate results. Please try unchecking it or check your backend service.`;
@@ -152,7 +161,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
     }
   };
 
-  // --- EXPORT AND COPY FUNCTIONS ---
   const exportToExcel = () => {
     const allCases = [...openaiCases, ...geminiCases, ...claudeCases];
     if (allCases.length === 0) {
@@ -160,7 +168,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
       return;
     }
     
-    // ✅ UPDATED: Export now includes Priority but not Automation Status
     const dataForExport = allCases.map(tc => ({ 
       'Scenario Title': tc.title, 
       'BDD Steps': tc.lines.join('\n'),
@@ -197,6 +204,9 @@ ${personaText}Please generate ${scenarioCount} test cases.
     setOpenaiCases([]);
     setGeminiCases([]);
     setClaudeCases([]);
+    setOpenaiSummary('');
+    setGeminiSummary('');
+    setClaudeSummary('');
     setError(null);
     setLoginCredentials('');
     setScenarioCount(5);
@@ -206,7 +216,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
   };
   
   // --- SUB-COMPONENT FOR RENDERING RESULTS ---
-  const ResultsColumn = ({ title, cases }) => {
+  const ResultsColumn = ({ title, cases, summary }) => {
     const modelKey = title.toLowerCase().includes('openai') ? 'openai' : title.toLowerCase().includes('gemini') ? 'gemini' : 'claude';
     if (!selectedModels[modelKey]) return null;
 
@@ -229,7 +239,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
             <p className="font-bold text-gray-200">{tc.title}</p>
             <div className="whitespace-pre-wrap text-sm text-gray-300 pt-3 border-t border-gray-700">{tc.lines.join('\n')}</div>
             
-            {/* ✅ UPDATED: Metadata display now only shows Priority */}
             <div className="pt-3 border-t border-gray-700 flex items-center gap-4 text-xs">
                 <div className={`px-2 py-1 rounded-full border ${priorityColor[tc.priority]}`}>
                     <strong>Priority:</strong> {tc.priority}
@@ -237,6 +246,13 @@ ${personaText}Please generate ${scenarioCount} test cases.
             </div>
           </div>
         ))}
+        {/* ✅ NEW: Display the coverage summary */}
+        {summary && (
+            <div className="mt-4 p-3 bg-gray-700/50 rounded-lg text-sm italic border border-gray-600">
+                <p className="font-semibold mb-1 text-yellow-400">Coverage Summary:</p>
+                <p className="text-gray-300">{summary}</p>
+            </div>
+        )}
       </div>
     );
   };
@@ -246,7 +262,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
       <Toaster position="top-center" reverseOrder={false} />
       <div className="min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8">
         <div className="max-w-screen-xl mx-auto space-y-8">
-          <div className="relative flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4">
             <h1 className="text-3xl sm:text-4xl font-bold text-center">AI Test Case Generator</h1>
           </div>
 
@@ -317,9 +333,9 @@ ${personaText}Please generate ${scenarioCount} test cases.
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <ResultsColumn title="OpenAI Results" cases={openaiCases} />
-                    <ResultsColumn title="Gemini Results" cases={geminiCases} />
-                    <ResultsColumn title="Claude Results" cases={claudeCases} />
+                    <ResultsColumn title="OpenAI Results" cases={openaiCases} summary={openaiSummary} />
+                    <ResultsColumn title="Gemini Results" cases={geminiCases} summary={geminiSummary} />
+                    <ResultsColumn title="Claude Results" cases={claudeCases} summary={claudeSummary} />
                 </div>
               </div>
             )}
