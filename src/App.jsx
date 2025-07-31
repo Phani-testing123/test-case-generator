@@ -166,9 +166,9 @@ ${personaText}Please generate ${scenarioCount} test cases.
                 .join('\n\n=====================\n\n');
   };
 
-  const openaiFormattedText = formatCasesForDisplay(openaiCases);
-  const geminiFormattedText = formatCasesForDisplay(geminiCases);
-  const claudeFormattedText = formatCasesForDisplay(claudeCases);
+  const openaiFormattedText = useMemo(() => formatCasesForDisplay(openaiCases), [openaiCases]);
+  const geminiFormattedText = useMemo(() => formatCasesForDisplay(geminiCases), [geminiCases]);
+  const claudeFormattedText = useMemo(() => formatCasesForDisplay(claudeCases), [claudeCases]);
 
   const exportToExcel = () => {
     const allCases = [...openaiCases, ...geminiCases, ...claudeCases];
@@ -248,23 +248,17 @@ ${personaText}Please generate ${scenarioCount} test cases.
   return (
     <>
       <Toaster position="top-center" reverseOrder={false} />
-      {/* ✅ FIXED: Style tag now uses a self-contained Base64 SVG for reliability */}
-      <style>{`
-        .main-container::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiNmZmYiLz48L3N2Zz4=");
-          background-repeat: repeat;
-          opacity: 0.03;
-          z-index: 0;
-          pointer-events: none;
-        }
-      `}</style>
-      <div className="main-container relative min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8">
+      {/* ✅ FIXED: Replaced <style> tag with a more reliable dedicated div for the background pattern */}
+      <div className="relative min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8 overflow-hidden">
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: `url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBmaWxsPSIjZmZmIiBvcGFjaXR5PSIuMDMiIGQ9Ik0wIDQwVjBoNDB2NDBIMHptMjAgMFYwTDBoMjB2NDBIMjB6Ii8+PC9nPjwvc3ZnPg==')`,
+            backgroundRepeat: 'repeat',
+            opacity: 0.05,
+            pointerEvents: 'none',
+          }}
+        ></div>
         <div className="relative z-10 max-w-screen-xl mx-auto space-y-8">
           <div className="flex items-center justify-center gap-4">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
