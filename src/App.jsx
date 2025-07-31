@@ -21,6 +21,20 @@ const App = () => {
   const [loginCredentials, setLoginCredentials] = useState('');
   const [selectedModels, setSelectedModels] = useState({ openai: true, gemini: false, claude: false });
   const [countError, setCountError] = useState(null);
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    let name = localStorage.getItem('userName');
+    if (!name) {
+      const adjectives = ['Agile', 'Brave', 'Clever', 'Daring', 'Eager', 'Quick', 'Wise'];
+      const animals = ['Fox', 'Lion', 'Panda', 'Tiger', 'Eagle', 'Jaguar', 'Wolf'];
+      const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+      const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
+      name = `${randomAdjective} ${randomAnimal}`;
+      localStorage.setItem('userName', name);
+    }
+    setUserName(name);
+  }, []);
 
   // --- PARSING FUNCTION (GHERKIN ONLY) ---
   const parseAIOutput = (output) => {
@@ -28,7 +42,6 @@ const App = () => {
 
     let summary = '';
     let casesText = output;
-    // Find and extract the coverage summary
     const summaryMatch = output.match(/coverage summary:/i);
     if (summaryMatch) {
         const summaryIndex = summaryMatch.index;
@@ -36,17 +49,18 @@ const App = () => {
         summary = output.substring(summaryIndex).replace(/coverage summary:/i, '').trim();
     }
 
-    const chunks = casesText.split(/Scenario:/im);
-    const testCaseChunks = chunks.slice(1).map(chunk => "Scenario:" + chunk);
+    const chunks = casesText.split(/\n?(?=Scenario:)/im);
+    const testCaseChunks = chunks.filter(chunk => chunk.trim().startsWith("Scenario:"));
 
     if (testCaseChunks.length === 0 && casesText.trim()) {
       testCaseChunks.push(casesText);
     }
 
     const cases = testCaseChunks.map(textChunk => {
-      const lines = textChunk.trim().split('\n').map(l => l.trim());
+      const cleanChunk = textChunk.replace(/\*\*/g, '');
+      const lines = cleanChunk.trim().split('\n').map(l => l.trim());
       let title = lines.shift() || 'Untitled';
-      title = title.replace(/^(Scenario:)/i, '').trim();
+      title = title.replace(/^(Scenario:|Test Scenario \d+:)/i, '').trim();
       
       const priorityMatch = textChunk.match(/Priority:\s*(High|Medium|Low)/i);
       const bddLines = lines.filter(line => !line.match(/Priority:/i));
@@ -76,18 +90,33 @@ const App = () => {
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
     
-    const prompt = `You are an expert QA Engineer. Your task is to generate precise Gherkin scenarios.
+    // ✅ UPDATED: Enhanced prompt with "And" keyword in the example
+    const prompt = `You are a world-class Principal QA Engineer with expertise in BDD. Your task is to generate precise Gherkin scenarios for the requirement below.
 
 **Requirement:**
 ${input}
 
-${personaText}Please generate ${scenarioCount} test cases.
+${personaText}
+---
+**Step 1: Analysis (Your Thought Process)**
+First, perform a brief analysis of the requirement. Identify the main user actions, system components, and potential failure points. Think about what could go wrong.
 
-**CRITICAL FORMATTING RULES:**
-1. Each scenario MUST start with "Scenario: [Title]".
-2. After the Gherkin steps of each scenario, add "Priority: [High, Medium, or Low]".
-3. After generating ALL scenarios, add a final section under the heading "Coverage Summary:". This summary MUST be a descriptive paragraph explaining what types of scenarios (e.g., positive, negative, edge cases) were covered. It MUST NOT be a simple count.
-4. You MUST NOT use any markdown formatting (like **).`;
+**Step 2: Scenario Generation**
+Based on your analysis, generate ${scenarioCount} test cases. Ensure you create a diverse set that includes happy path (successful journeys), negative (error handling), and edge cases (boundary conditions, unexpected inputs).
+
+**CRITICAL: Follow this exact format for each scenario:**
+
+**Example Format:**
+Scenario: [A clear and descriptive title]
+  Given [Some context or precondition]
+  And [another precondition]
+  When [A specific user action is performed]
+  Then [An observable outcome occurs]
+  And [another outcome is verified]
+Priority: [High, Medium, or Low]
+
+---
+**Your Response:**`;
 
     try {
       const apiCalls = [];
@@ -160,6 +189,16 @@ ${personaText}Please generate ${scenarioCount} test cases.
     }
   };
 
+  const formatCasesForDisplay = (cases) => {
+    if (!cases || cases.length === 0) return '';
+    return cases.map(tc => `Scenario: ${tc.title}\n\n${tc.lines.join('\n')}`)
+                .join('\n\n=====================\n\n');
+  };
+
+  const openaiFormattedText = formatCasesForDisplay(openaiCases);
+  const geminiFormattedText = formatCasesForDisplay(geminiCases);
+  const claudeFormattedText = formatCasesForDisplay(claudeCases);
+
   const exportToExcel = () => {
     const allCases = [...openaiCases, ...geminiCases, ...claudeCases];
     if (allCases.length === 0) {
@@ -182,19 +221,12 @@ ${personaText}Please generate ${scenarioCount} test cases.
   };
 
   const copyToClipboard = () => {
-    const allCases = [...openaiCases, ...geminiCases, ...claudeCases];
-    if (allCases.length === 0) {
+    const textToCopy = [openaiFormattedText, geminiFormattedText, claudeFormattedText].filter(Boolean).join('\n\n');
+    if (!textToCopy) {
       toast.error('No results to copy.');
       return;
     }
-    
-    const textToCopy = allCases.map(tc => {
-        let text = `Scenario: ${tc.title}\n${tc.lines.join('\n')}`;
-        text += `\nPriority: ${tc.priority}`;
-        return text;
-    }).join('\n\n=====================\n\n');
-
-    navigator.clipboard.writeText(textToCopy.trim());
+    navigator.clipboard.writeText(textToCopy);
     toast.success('Results copied!');
   };
 
@@ -214,7 +246,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
     toast('Cleared all data.', { icon: '🗑️' });
   };
   
-  // --- SUB-COMPONENT FOR RENDERING RESULTS ---
   const ResultsColumn = ({ title, cases, summary }) => {
     const modelKey = title.toLowerCase().includes('openai') ? 'openai' : title.toLowerCase().includes('gemini') ? 'gemini' : 'claude';
     if (!selectedModels[modelKey]) return null;
@@ -260,8 +291,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
       <Toaster position="top-center" reverseOrder={false} />
       <div className="min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8">
         <div className="max-w-screen-xl mx-auto space-y-8">
-          <div className="flex items-center justify-center gap-4">
-            {/* ✅ NEW: Replaced img tag with an inline SVG for a robot icon */}
+          <div className="relative flex items-center justify-center gap-4">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 8V4H8V2h8v2h-4Z" />
               <rect x="4" y="8" width="16" height="12" rx="2" />
@@ -270,6 +300,11 @@ ${personaText}Please generate ${scenarioCount} test cases.
               <path d="M12 18v-4" />
             </svg>
             <h1 className="text-3xl sm:text-4xl font-bold text-center">AI Test Case Generator</h1>
+            {userName && (
+              <div className="absolute top-0 right-0 bg-gray-700/50 px-3 py-1.5 rounded-lg text-sm">
+                Welcome, <strong>{userName}</strong>
+              </div>
+            )}
           </div>
 
           <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-4">
