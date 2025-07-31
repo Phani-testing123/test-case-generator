@@ -35,25 +35,27 @@ const App = () => {
         summary = output.substring(summaryIndex).replace(/coverage summary:/i, '').trim();
     }
 
-    const chunks = casesText.split(/\n?(?=Scenario:)/im);
-    const testCaseChunks = chunks.filter(chunk => chunk.trim().startsWith("Scenario:"));
+    // ✅ FINAL FIX: This is a much more robust way to split scenarios.
+    // It splits the entire block by "Scenario:", which is a more reliable delimiter.
+    const testCaseChunks = casesText.split(/Scenario:/im)
+                                     .slice(1) // Discard anything before the first "Scenario:"
+                                     .filter(chunk => chunk.trim()); // Ensure no empty chunks
 
     if (testCaseChunks.length === 0 && casesText.trim()) {
+      // Fallback if the primary split method fails
       testCaseChunks.push(casesText);
     }
 
     const cases = testCaseChunks.map(textChunk => {
-      const cleanChunk = textChunk.replace(/\*\*/g, '');
-      const lines = cleanChunk.trim().split('\n').map(l => l.trim());
+      const lines = textChunk.trim().split('\n').map(l => l.trim());
       let title = lines.shift() || 'Untitled';
-      title = title.replace(/^(Scenario:|Test Scenario \d+:)/i, '').trim();
       
       const priorityMatch = textChunk.match(/Priority:\s*(High|Medium|Low)/i);
       const bddLines = lines.filter(line => !line.match(/Priority:/i));
 
       return {
         id: generateId(),
-        title: title,
+        title: title.replace(/\*\*/g, '').trim(),
         lines: bddLines.filter(Boolean),
         priority: priorityMatch ? priorityMatch[1] : 'N/A',
       };
@@ -84,10 +86,12 @@ ${input}
 ${personaText}Please generate ${scenarioCount} test cases.
 
 **CRITICAL FORMATTING RULES:**
-1. Each scenario MUST start with "Scenario: [Title]".
-2. After the Gherkin steps of each scenario, add "Priority: [High, Medium, or Low]".
-3. After generating ALL scenarios, add a final section under the heading "Coverage Summary:". This summary MUST be a descriptive paragraph.
-4. You MUST NOT use any markdown formatting (like **).`;
+1. Your entire response MUST consist of Gherkin scenarios and an optional summary.
+2. You MUST NOT include a "Feature:" line or any other text before the first scenario.
+3. Every test case MUST begin on a new line with the keyword "Scenario:".
+4. After the Gherkin steps of each scenario, add "Priority: [High, Medium, or Low]".
+5. After generating ALL scenarios, you MAY add a final section under the heading "Coverage Summary:".
+6. You MUST NOT use any markdown formatting (like **).`;
 
     try {
       const apiCalls = [];
