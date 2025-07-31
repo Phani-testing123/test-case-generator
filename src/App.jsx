@@ -34,16 +34,15 @@ const App = () => {
       const cleanChunk = textChunk.replace(/\*\*/g, '');
       const lines = cleanChunk.trim().split('\n').map(l => l.trim());
       let title = lines.shift() || 'Untitled';
-      title = title.replace(/^(Scenario:)/i, '').trim();
+      title = title.replace(/^(Scenario:|Test Scenario \d+:)/i, '').trim();
       
-      // ✅ NEW: Extract new metadata fields
+      // ✅ UPDATED: Extract new metadata fields
       const priorityMatch = textChunk.match(/Priority:\s*(High|Medium|Low)/i);
-      const feasibilityMatch = textChunk.match(/Automation Feasibility:\s*(\d+\/10)/i);
-      const bugTitleMatch = textChunk.match(/Suggested Bug Title:\s*(.*)/i);
+      const automationMatch = textChunk.match(/Automation Status:\s*(Automate|Manual Only|TBD)/i);
 
       // Filter out metadata lines from the main steps
       const bddLines = lines.filter(line => 
-        !line.match(/Priority:|Automation Feasibility:|Suggested Bug Title:/i)
+        !line.match(/Priority:|Automation Status:/i)
       );
 
       return {
@@ -51,8 +50,7 @@ const App = () => {
         title: title,
         lines: bddLines.filter(Boolean),
         priority: priorityMatch ? priorityMatch[1] : 'N/A',
-        feasibility: feasibilityMatch ? feasibilityMatch[1] : 'N/A',
-        bugTitle: bugTitleMatch ? bugTitleMatch[1] : null,
+        automationStatus: automationMatch ? automationMatch[1] : 'N/A',
       };
     });
     return { cases };
@@ -86,8 +84,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
 2. Follow with Gherkin steps (Given, When, Then).
 3. After the steps, on new lines, add the following metadata:
    - "Priority: [High, Medium, or Low]"
-   - "Automation Feasibility: [Score from 1/10 to 10/10]"
-   - If it's a negative scenario, add "Suggested Bug Title: [A concise bug title]"
+   - "Automation Status: [Automate, Manual Only, or TBD]"
 4. You MUST NOT use any markdown formatting (like **).`;
 
     try {
@@ -171,12 +168,11 @@ ${personaText}Please generate ${scenarioCount} test cases.
       'Scenario Title': tc.title, 
       'BDD Steps': tc.lines.join('\n'),
       'Priority': tc.priority,
-      'Automation Feasibility': tc.feasibility,
-      'Suggested Bug Title': tc.bugTitle || 'N/A',
+      'Automation Status': tc.automationStatus,
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataForExport);
-    ws['!cols'] = [{ wch: 50 }, { wch: 60 }, { wch: 15 }, { wch: 20 }, { wch: 60 }];
+    ws['!cols'] = [{ wch: 50 }, { wch: 60 }, { wch: 15 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Test Cases");
     XLSX.writeFile(wb, 'ai_generated_test_cases.xlsx');
@@ -193,8 +189,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
     const textToCopy = allCases.map(tc => {
         let text = `Scenario: ${tc.title}\n${tc.lines.join('\n')}`;
         text += `\nPriority: ${tc.priority}`;
-        text += `\nAutomation Feasibility: ${tc.feasibility}`;
-        if(tc.bugTitle) text += `\nSuggested Bug Title: ${tc.bugTitle}`;
+        text += `\nAutomation Status: ${tc.automationStatus}`;
         return text;
     }).join('\n\n=====================\n\n');
 
@@ -230,6 +225,14 @@ ${personaText}Please generate ${scenarioCount} test cases.
         Low: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
         'N/A': 'bg-gray-500/20 text-gray-300 border-gray-500/30'
     };
+    
+    // ✅ NEW: Color coding for Automation Status
+    const automationColor = {
+        Automate: 'bg-green-500/20 text-green-300 border-green-500/30',
+        'Manual Only': 'bg-gray-500/20 text-gray-300 border-gray-500/30',
+        TBD: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+        'N/A': 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+    };
 
     return (
       <div className='space-y-4'>
@@ -239,22 +242,14 @@ ${personaText}Please generate ${scenarioCount} test cases.
             <p className="font-bold text-gray-200">{tc.title}</p>
             <div className="whitespace-pre-wrap text-sm text-gray-300 pt-3 border-t border-gray-700">{tc.lines.join('\n')}</div>
             
-            {/* ✅ NEW: Metadata display */}
-            <div className="pt-3 border-t border-gray-700 space-y-2">
-                <div className="flex items-center gap-4 text-xs">
-                    <div className={`px-2 py-1 rounded-full border ${priorityColor[tc.priority]}`}>
-                        <strong>Priority:</strong> {tc.priority}
-                    </div>
-                    <div className="px-2 py-1 rounded-full border bg-gray-500/20 text-gray-300 border-gray-500/30">
-                        <strong>Feasibility:</strong> {tc.feasibility}
-                    </div>
+            {/* ✅ UPDATED: Metadata display */}
+            <div className="pt-3 border-t border-gray-700 flex items-center gap-4 text-xs">
+                <div className={`px-2 py-1 rounded-full border ${priorityColor[tc.priority]}`}>
+                    <strong>Priority:</strong> {tc.priority}
                 </div>
-                {tc.bugTitle && (
-                    <div className="text-xs">
-                        <strong className="text-red-400">Suggested Bug Title:</strong>
-                        <p className="italic text-gray-400 pl-2">{tc.bugTitle}</p>
-                    </div>
-                )}
+                <div className={`px-2 py-1 rounded-full border ${automationColor[tc.automationStatus]}`}>
+                    <strong>Automation:</strong> {tc.automationStatus}
+                </div>
             </div>
           </div>
         ))}
