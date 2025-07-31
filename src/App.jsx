@@ -183,7 +183,9 @@ const App = () => {
     toast.success('Results copied!');
   };
 
+  // ✅ UPDATED: clearAll function now resets the entire form
   const clearAll = () => {
+    // Clear results
     setInput('');
     setOpenaiCases([]);
     setGeminiCases([]);
@@ -192,6 +194,13 @@ const App = () => {
     setGeminiSummary('');
     setClaudeSummary('');
     setError(null);
+
+    // Reset form inputs to default
+    setLoginCredentials('');
+    setScenarioCount(5);
+    setSelectedModels({ openai: true, gemini: false, claude: false });
+    setCountError(null);
+
     toast('Cleared all data.', { icon: '🗑️' });
   };
   
@@ -242,7 +251,6 @@ const App = () => {
               onChange={(e) => setInput(e.target.value)}
             />
             
-            {/* ✅ UPDATED: Grid classes for better alignment */}
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4 items-start'>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Login Credentials</label>
