@@ -249,13 +249,12 @@ ${personaText}Please generate ${scenarioCount} test cases.
     <>
       <Toaster position="top-center" reverseOrder={false} />
       <div className="relative min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8 overflow-hidden">
-        {/* ✅ CORRECTED: This div now points to your 'pattern.png' file in the public folder */}
         <div
           className="absolute inset-0 z-0"
           style={{
             backgroundImage: `url('/pattern.png')`, // Assumes your image is named pattern.png
             backgroundRepeat: 'repeat',
-            opacity: 0.05, // You can adjust this value to make it more or less visible
+            opacity: 0.1, // You can adjust this value to make it more or less visible
             pointerEvents: 'none',
           }}
         ></div>
