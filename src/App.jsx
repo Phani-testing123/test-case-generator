@@ -21,20 +21,6 @@ const App = () => {
   const [loginCredentials, setLoginCredentials] = useState('');
   const [selectedModels, setSelectedModels] = useState({ openai: true, gemini: false, claude: false });
   const [countError, setCountError] = useState(null);
-  const [userName, setUserName] = useState('');
-
-  useEffect(() => {
-    let name = localStorage.getItem('userName');
-    if (!name) {
-      const adjectives = ['Agile', 'Brave', 'Clever', 'Daring', 'Eager', 'Quick', 'Wise'];
-      const animals = ['Fox', 'Lion', 'Panda', 'Tiger', 'Eagle', 'Jaguar', 'Wolf'];
-      const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
-      const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
-      name = `${randomAdjective} ${randomAnimal}`;
-      localStorage.setItem('userName', name);
-    }
-    setUserName(name);
-  }, []);
 
   // --- PARSING FUNCTION (GHERKIN ONLY) ---
   const parseAIOutput = (output) => {
@@ -90,33 +76,18 @@ const App = () => {
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
     
-    // ✅ UPDATED: Enhanced prompt with "And" keyword in the example
-    const prompt = `You are a world-class Principal QA Engineer with expertise in BDD. Your task is to generate precise Gherkin scenarios for the requirement below.
+    const prompt = `You are an expert QA Engineer. Your task is to generate precise Gherkin scenarios.
 
 **Requirement:**
 ${input}
 
-${personaText}
----
-**Step 1: Analysis (Your Thought Process)**
-First, perform a brief analysis of the requirement. Identify the main user actions, system components, and potential failure points. Think about what could go wrong.
+${personaText}Please generate ${scenarioCount} test cases.
 
-**Step 2: Scenario Generation**
-Based on your analysis, generate ${scenarioCount} test cases. Ensure you create a diverse set that includes happy path (successful journeys), negative (error handling), and edge cases (boundary conditions, unexpected inputs).
-
-**CRITICAL: Follow this exact format for each scenario:**
-
-**Example Format:**
-Scenario: [A clear and descriptive title]
-  Given [Some context or precondition]
-  And [another precondition]
-  When [A specific user action is performed]
-  Then [An observable outcome occurs]
-  And [another outcome is verified]
-Priority: [High, Medium, or Low]
-
----
-**Your Response:**`;
+**CRITICAL FORMATTING RULES:**
+1. Each scenario MUST start with "Scenario: [Title]".
+2. After the Gherkin steps of each scenario, add "Priority: [High, Medium, or Low]".
+3. After generating ALL scenarios, add a final section under the heading "Coverage Summary:". This summary MUST be a descriptive paragraph.
+4. You MUST NOT use any markdown formatting (like **).`;
 
     try {
       const apiCalls = [];
@@ -246,11 +217,11 @@ Priority: [High, Medium, or Low]
     toast('Cleared all data.', { icon: '🗑️' });
   };
   
-  const ResultsColumn = ({ title, cases, summary }) => {
+  const ResultsColumn = ({ title, formattedText, summary }) => {
     const modelKey = title.toLowerCase().includes('openai') ? 'openai' : title.toLowerCase().includes('gemini') ? 'gemini' : 'claude';
     if (!selectedModels[modelKey]) return null;
 
-    if (cases.length === 0 && !loading) {
+    if (!formattedText && !summary && !loading) {
         return <div className='text-center text-gray-500 p-4 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg'>No results from {title.split(' ')[0]}.</div>
     }
 
@@ -264,20 +235,15 @@ Priority: [High, Medium, or Low]
     return (
       <div className='space-y-4'>
         <h3 className='text-center font-bold text-lg text-blue-300'>{title}</h3>
-        {cases.map((tc) => (
-          <div key={tc.id} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-3">
-            <p className="font-bold text-gray-200">{tc.title}</p>
-            <div className="whitespace-pre-wrap text-sm text-gray-300 pt-3 border-t border-gray-700">{tc.lines.join('\n')}</div>
-            
-            <div className="pt-3 border-t border-gray-700 flex items-center gap-4 text-xs">
-                <div className={`px-2 py-1 rounded-full border ${priorityColor[tc.priority]}`}>
-                    <strong>Priority:</strong> {tc.priority}
-                </div>
+        {formattedText && (
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 h-[50vh] overflow-y-auto">
+              <pre className="whitespace-pre-wrap text-sm text-gray-300 font-sans">
+                {formattedText}
+              </pre>
             </div>
-          </div>
-        ))}
+        )}
         {summary && (
-            <div className="mt-4 p-3 bg-gray-700/50 rounded-lg text-sm italic border border-gray-600">
+            <div className="p-3 bg-gray-700/50 rounded-lg text-sm italic border border-gray-600">
                 <p className="font-semibold mb-1 text-yellow-400">Coverage Summary:</p>
                 <p className="text-gray-300">{summary}</p>
             </div>
@@ -291,7 +257,7 @@ Priority: [High, Medium, or Low]
       <Toaster position="top-center" reverseOrder={false} />
       <div className="min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8">
         <div className="max-w-screen-xl mx-auto space-y-8">
-          <div className="relative flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 8V4H8V2h8v2h-4Z" />
               <rect x="4" y="8" width="16" height="12" rx="2" />
@@ -300,11 +266,6 @@ Priority: [High, Medium, or Low]
               <path d="M12 18v-4" />
             </svg>
             <h1 className="text-3xl sm:text-4xl font-bold text-center">AI Test Case Generator</h1>
-            {userName && (
-              <div className="absolute top-0 right-0 bg-gray-700/50 px-3 py-1.5 rounded-lg text-sm">
-                Welcome, <strong>{userName}</strong>
-              </div>
-            )}
           </div>
 
           <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-4">
