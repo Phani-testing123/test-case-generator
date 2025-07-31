@@ -36,13 +36,12 @@ const App = () => {
       let title = lines.shift() || 'Untitled';
       title = title.replace(/^(Scenario:|Test Scenario \d+:)/i, '').trim();
       
-      // ✅ UPDATED: Extract new metadata fields
+      // ✅ UPDATED: Extract only Priority metadata
       const priorityMatch = textChunk.match(/Priority:\s*(High|Medium|Low)/i);
-      const automationMatch = textChunk.match(/Automation Status:\s*(Automate|Manual Only|TBD)/i);
 
       // Filter out metadata lines from the main steps
       const bddLines = lines.filter(line => 
-        !line.match(/Priority:|Automation Status:/i)
+        !line.match(/Priority:/i)
       );
 
       return {
@@ -50,7 +49,6 @@ const App = () => {
         title: title,
         lines: bddLines.filter(Boolean),
         priority: priorityMatch ? priorityMatch[1] : 'N/A',
-        automationStatus: automationMatch ? automationMatch[1] : 'N/A',
       };
     });
     return { cases };
@@ -71,7 +69,7 @@ const App = () => {
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
     
-    // ✅ UPDATED PROMPT: Asks for new metadata fields
+    // ✅ UPDATED PROMPT: Asks only for Priority
     const prompt = `You are an expert QA Engineer. Your task is to generate precise Gherkin scenarios based on the following requirement.
 
 **Requirement:**
@@ -82,9 +80,8 @@ ${personaText}Please generate ${scenarioCount} test cases.
 **CRITICAL FORMATTING RULES FOR EACH SCENARIO:**
 1. Start with "Scenario: [Title]".
 2. Follow with Gherkin steps (Given, When, Then).
-3. After the steps, on new lines, add the following metadata:
+3. After the steps, on a new line, add the following metadata:
    - "Priority: [High, Medium, or Low]"
-   - "Automation Status: [Automate, Manual Only, or TBD]"
 4. You MUST NOT use any markdown formatting (like **).`;
 
     try {
@@ -163,16 +160,15 @@ ${personaText}Please generate ${scenarioCount} test cases.
       return;
     }
     
-    // ✅ UPDATED: Export now includes the new metadata
+    // ✅ UPDATED: Export now includes Priority but not Automation Status
     const dataForExport = allCases.map(tc => ({ 
       'Scenario Title': tc.title, 
       'BDD Steps': tc.lines.join('\n'),
       'Priority': tc.priority,
-      'Automation Status': tc.automationStatus,
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataForExport);
-    ws['!cols'] = [{ wch: 50 }, { wch: 60 }, { wch: 15 }, { wch: 20 }];
+    ws['!cols'] = [{ wch: 50 }, { wch: 60 }, { wch: 15 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Test Cases");
     XLSX.writeFile(wb, 'ai_generated_test_cases.xlsx');
@@ -189,7 +185,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
     const textToCopy = allCases.map(tc => {
         let text = `Scenario: ${tc.title}\n${tc.lines.join('\n')}`;
         text += `\nPriority: ${tc.priority}`;
-        text += `\nAutomation Status: ${tc.automationStatus}`;
         return text;
     }).join('\n\n=====================\n\n');
 
@@ -225,14 +220,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
         Low: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
         'N/A': 'bg-gray-500/20 text-gray-300 border-gray-500/30'
     };
-    
-    // ✅ NEW: Color coding for Automation Status
-    const automationColor = {
-        Automate: 'bg-green-500/20 text-green-300 border-green-500/30',
-        'Manual Only': 'bg-gray-500/20 text-gray-300 border-gray-500/30',
-        TBD: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-        'N/A': 'bg-gray-500/20 text-gray-300 border-gray-500/30'
-    };
 
     return (
       <div className='space-y-4'>
@@ -242,13 +229,10 @@ ${personaText}Please generate ${scenarioCount} test cases.
             <p className="font-bold text-gray-200">{tc.title}</p>
             <div className="whitespace-pre-wrap text-sm text-gray-300 pt-3 border-t border-gray-700">{tc.lines.join('\n')}</div>
             
-            {/* ✅ UPDATED: Metadata display */}
+            {/* ✅ UPDATED: Metadata display now only shows Priority */}
             <div className="pt-3 border-t border-gray-700 flex items-center gap-4 text-xs">
                 <div className={`px-2 py-1 rounded-full border ${priorityColor[tc.priority]}`}>
                     <strong>Priority:</strong> {tc.priority}
-                </div>
-                <div className={`px-2 py-1 rounded-full border ${automationColor[tc.automationStatus]}`}>
-                    <strong>Automation:</strong> {tc.automationStatus}
                 </div>
             </div>
           </div>
