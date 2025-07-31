@@ -5,10 +5,45 @@
     <link rel="icon" type="image/png" href="/bk-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#111827" />
-    <title>Test Case Generator</title>
+
+    <!-- SEO and Social Media Tags -->
+    <title>AI Test Case Generator</title>
+    <meta name="description" content="An intelligent co-pilot for QA teams to generate, compare, and export test cases using multiple AI models." />
+    <meta property="og:title" content="AI Test Case Generator" />
+    <meta property="og:description" content="Accelerate your testing lifecycle by generating comprehensive Gherkin scenarios with OpenAI, Gemini, and Claude." />
+    <meta property="og:image" content="/social-preview.png" /> <!-- Optional: Create a 1200x630px image and place it in your /public folder -->
+    <meta property="og:url" content="https://test-case-generator-one.vercel.app/" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Google Fonts Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+      /* Apply the custom font and a smooth transition */
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #111827; /* bg-gray-900 */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Simple loading indicator styles */
+      #root:empty::before {
+        content: "Loading...";
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-size: 1.25rem;
+        color: #9ca3af; /* text-gray-400 */
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
