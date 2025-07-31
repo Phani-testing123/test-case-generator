@@ -248,9 +248,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
         <div className="max-w-screen-xl mx-auto space-y-8">
           <div className="relative flex items-center justify-center gap-4">
             <h1 className="text-3xl sm:text-4xl font-bold text-center">AI Test Case Generator</h1>
-            {userName && (
-              // ... user name display
-            )}
           </div>
 
           <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-4">
