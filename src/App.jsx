@@ -259,15 +259,6 @@ ${personaText}Please generate ${scenarioCount} test cases.
     <>
       <Toaster position="top-center" reverseOrder={false} />
       <div className="min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8">
-        <div
-          className="absolute inset-0 z-0"
-          style={{
-            backgroundImage: `url('/pattern.png')`, // Assumes your image is named pattern.png
-            backgroundRepeat: 'repeat',
-            opacity: 0.1, // ✅ UPDATED: Increased opacity for better visibility
-            pointerEvents: 'none',
-          }}
-          ></div>
         <div className="max-w-screen-xl mx-auto space-y-8">
           <div className="flex items-center justify-center gap-4">
             {/* ✅ NEW: Replaced img tag with an inline SVG for a robot icon */}
