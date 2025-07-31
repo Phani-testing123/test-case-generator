@@ -69,7 +69,13 @@ const App = () => {
     setError(null);
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
-    const prompt = `${input}\n\n${personaText}Please generate ${scenarioCount} test cases in Gherkin format. After generating all scenarios, add a final section under the heading "Coverage Summary:" that briefly explains the scope and focus of the generated tests.`;
+    // ✅ UPDATED PROMPT: Gives the AI a specific role and stricter rules
+const prompt = `You are a meticulous and experienced QA Engineer. Your primary task is to analyze the following user story and acceptance criteria, then generate precise Gherkin test scenarios. Pay close attention to every detail, business rule, and potential edge case.
+
+**Requirement:**
+${input}
+
+${personaText}Please generate ${scenarioCount} test cases in Gherkin format. After generating all scenarios, add a final section under the heading "Coverage Summary:" that briefly explains the scope and focus of the generated tests.`;
 
     try {
       const apiCalls = [];
