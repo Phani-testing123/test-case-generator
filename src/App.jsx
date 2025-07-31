@@ -9,6 +9,7 @@ const generateId = () => `tc_${Date.now()}_${Math.random().toString(36).substr(2
 const App = () => {
   // --- STATE MANAGEMENT ---
   const [input, setInput] = useState('');
+  const [prerequisites, setPrerequisites] = useState(''); // ✅ NEW: State for prerequisites
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [openaiCases, setOpenaiCases] = useState([]);
@@ -69,11 +70,13 @@ const App = () => {
     setError(null);
 
     const personaText = loginCredentials.trim() ? `For a user with login credentials "${loginCredentials.trim()}", ` : '';
-    // ✅ UPDATED PROMPT: Gives the AI a specific role and stricter rules
-const prompt = `You are a meticulous and experienced QA Engineer. Your primary task is to analyze the following user story and acceptance criteria, then generate precise Gherkin test scenarios. Pay close attention to every detail, business rule, and potential edge case.
+    // ✅ UPDATED: Include prerequisites in the prompt
+    const prerequisitesText = prerequisites.trim() ? `\n\n**Prerequisites & Context:**\n${prerequisites.trim()}` : '';
+    
+    const prompt = `You are a meticulous and experienced QA Engineer. Your primary task is to analyze the following user story and acceptance criteria, then generate precise Gherkin test scenarios. Pay close attention to every detail, business rule, and potential edge case.
 
 **Requirement:**
-${input}
+${input}${prerequisitesText}
 
 ${personaText}Please generate ${scenarioCount} test cases in Gherkin format. After generating all scenarios, add a final section under the heading "Coverage Summary:" that briefly explains the scope and focus of the generated tests.`;
 
@@ -189,10 +192,9 @@ ${personaText}Please generate ${scenarioCount} test cases in Gherkin format. Aft
     toast.success('Results copied!');
   };
 
-  // ✅ UPDATED: clearAll function now resets the entire form
   const clearAll = () => {
-    // Clear results
     setInput('');
+    setPrerequisites(''); // ✅ UPDATED: Clear prerequisites
     setOpenaiCases([]);
     setGeminiCases([]);
     setClaudeCases([]);
@@ -200,13 +202,10 @@ ${personaText}Please generate ${scenarioCount} test cases in Gherkin format. Aft
     setGeminiSummary('');
     setClaudeSummary('');
     setError(null);
-
-    // Reset form inputs to default
     setLoginCredentials('');
     setScenarioCount(5);
     setSelectedModels({ openai: true, gemini: false, claude: false });
     setCountError(null);
-
     toast('Cleared all data.', { icon: '🗑️' });
   };
   
@@ -255,6 +254,14 @@ ${personaText}Please generate ${scenarioCount} test cases in Gherkin format. Aft
               placeholder="Paste acceptance criteria or feature description here..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
+            />
+            
+            {/* ✅ NEW: Prerequisites Text Box */}
+            <textarea
+              className="w-full rounded-lg p-4 bg-gray-900 text-white text-sm sm:text-base resize-y min-h-[80px] focus:ring-2 focus:ring-blue-500 transition"
+              placeholder="Optional: Add prerequisites, LD flags, or Figma links for context..."
+              value={prerequisites}
+              onChange={(e) => setPrerequisites(e.target.value)}
             />
             
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4 items-start'>
