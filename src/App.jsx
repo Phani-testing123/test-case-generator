@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { Toaster, toast } from 'react-hot-toast';
+import { Analytics } from '@vercel/analytics/react';
 
 // Helper function to generate a unique ID
 const generateId = () => `tc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -257,6 +258,7 @@ ${personaText}Please generate ${scenarioCount} test cases.
 
   return (
     <>
+     <Analytics />
       <Toaster position="top-center" reverseOrder={false} />
       <div className="min-h-screen bg-gray-900 text-white px-4 py-8 sm:px-8">
         <div className="max-w-screen-xl mx-auto space-y-8">
