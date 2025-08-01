@@ -5,6 +5,7 @@ import { Toaster, toast } from 'react-hot-toast';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 
+
 // Helper function to generate a unique ID
 const generateId = () => `tc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
