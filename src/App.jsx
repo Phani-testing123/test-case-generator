@@ -427,7 +427,7 @@ async function handleGeneratePlaywrightAI(tc) {
   try {
     setPlaywrightLoading(true);
     const gherkinText = `Scenario: ${tc.title}\n${tc.lines.join('\n')}`;
-    const response = await axios.post('http://localhost:5000/ai-generate-playwright', { scenario: gherkinText });
+    const response = await axios.post('https://test-case-backend.onrender.com/ai-generate-playwright', { scenario: gherkinText });
     if (response.data && response.data.code) {
       setPlaywrightCode(response.data.code);
       setShowPWModal(true);
