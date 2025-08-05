@@ -428,7 +428,7 @@ async function handleGeneratePlaywrightAI(tc) {
   try {
     setPlaywrightLoading(true);
     const gherkinText = `Scenario: ${tc.title}\n${tc.lines.join('\n')}`;
-    const response = await axios.post('https://test-case-backend.onrender.com/ai-generate-playwright', { scenario: gherkinText });
+    const response = await axios.post('https://test-case-backend-v1.onrender.com/ai-generate-playwright', { scenario: gherkinText });
     if (response.data && response.data.code) {
       setPlaywrightCode(response.data.code);
       setShowPWModal(true);
@@ -598,15 +598,15 @@ Your Response:
       const apiCalls = [];
       const modelNames = [];
       if (selectedModels.openai) {
-        apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-test-cases', { input: prompt }));
+        apiCalls.push(axios.post('https://test-case-backend-v1.onrender.com/generate-test-cases', { input: prompt }));
         modelNames.push('OpenAI');
       }
       if (selectedModels.gemini) {
-        apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-gemini-test-cases', { input: prompt }));
+        apiCalls.push(axios.post('https://test-case-backend-v1.onrender.com/generate-gemini-test-cases', { input: prompt }));
         modelNames.push('Gemini');
       }
       if (selectedModels.claude) {
-        apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-claude-test-cases', { input: prompt }));
+        apiCalls.push(axios.post('https://test-case-backend-v1.onrender.com/generate-claude-test-cases', { input: prompt }));
         modelNames.push('Claude');
       }
       const results = await Promise.allSettled(apiCalls);
@@ -704,15 +704,15 @@ Your Response:
     const apiCalls = [];
     const modelNames = []; 
     if (selectedModels.openai) {
-      apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-test-cases', { input: prompt }));
+      apiCalls.push(axios.post('https://test-case-backend-v1.onrender.com/generate-test-cases', { input: prompt }));
       modelNames.push('OpenAI');
     }
     if (selectedModels.gemini) {
-      apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-gemini-test-cases', { input: prompt }));
+      apiCalls.push(axios.post('https://test-case-backend-v1.onrender.com/generate-gemini-test-cases', { input: prompt }));
       modelNames.push('Gemini');
     }
     if (selectedModels.claude) {
-      apiCalls.push(axios.post('https://test-case-backend.onrender.com/generate-claude-test-cases', { input: prompt }));
+      apiCalls.push(axios.post('https://test-case-backend-v1.onrender.com/generate-claude-test-cases', { input: prompt }));
       modelNames.push('Claude');
     }
     const results = await Promise.allSettled(apiCalls);
