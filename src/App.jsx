@@ -8,6 +8,7 @@ import { exportAllPlaywright } from './utils/gherkinToPlaywright';
 import { exportAllAsFeatureFile, generateFeatureName } from './utils/exportFeatureFile';
 import { gherkinToWebdriverIO,exportAllWebdriverIO } from './utils/exportWebdriverIO';
 import { scenarioToFeature } from './utils/exportFeatureFile';
+import SignupAgent from "./components/SignupAgent";
 
 // Helper functions
 const generateId = () => `tc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -305,13 +306,13 @@ const ResultsColumn = ({
                 className="bg-red-700 hover:bg-red-800 px-3 py-1 text-xs rounded"
                 onClick={() => onReportBug(tc)}
               >Report Bug</button>
-             <button
+           {/*   <button
     className="bg-fuchsia-700 hover:bg-fuchsia-800 px-3 py-1 text-xs rounded"
     onClick={() => onGeneratePlaywrightAI(tc)}
   >
     AI to Playwright
-  </button>
- <button
+</button> */}
+ {/*  <button
   className="bg-green-700 hover:bg-green-800 px-3 py-1 text-xs rounded"
   onClick={() => {
     const featureName = generateFeatureName([tc]); // or however you generate feature name
@@ -321,8 +322,8 @@ const ResultsColumn = ({
   }}
 >
   To .feature
-</button>
-  <button
+</button> */}
+  {/* <button
     className="bg-amber-600 hover:bg-amber-700 px-3 py-1 text-xs rounded"
     onClick={() => {
       const code = gherkinToWebdriverIO(tc);
@@ -331,7 +332,8 @@ const ResultsColumn = ({
     }}
   >
     To WebdriverIO
-  </button>
+  </button> */}
+ 
             </div>
           </div>
         );
@@ -421,8 +423,7 @@ const App = () => {
     document.getElementById('main-input')?.focus();
   }, []);
 
-
-
+  
 async function handleGeneratePlaywrightAI(tc) {
   try {
     setPlaywrightLoading(true);
@@ -841,6 +842,7 @@ Your Response:
       <Analytics />
       <SpeedInsights />
       <Toaster position="top-center" reverseOrder={false} />
+      <SignupAgent />
 
       {playwrightLoading && (
   <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-60">
@@ -1008,7 +1010,7 @@ Your Response:
                     <button onClick={copyToClipboard} className="bg-gray-600 hover:bg-gray-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={!openaiCases.length && !geminiCases.length && !claudeCases.length}>📋 Copy</button>
                     <button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={!openaiCases.length && !geminiCases.length && !claudeCases.length}>📤 Export Excel</button>
                     <button onClick={exportToCSV} className="bg-yellow-600 hover:bg-yellow-700 text-sm py-2 px-4 rounded shadow transition disabled:opacity-50" disabled={!openaiCases.length && !geminiCases.length && !claudeCases.length}>📥 Export CSV</button>
-                   <button
+                  {/* <button
   onClick={() => {
     const allScenarios = [...openaiCases, ...geminiCases, ...claudeCases];
     const code = exportAllPlaywright(allScenarios);
@@ -1030,7 +1032,7 @@ Your Response:
   className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded"
 >
   Export Playwright
-</button>
+</button> */ }
 <button
   onClick={() => {
     const allScenarios = [...openaiCases, ...geminiCases, ...claudeCases];
