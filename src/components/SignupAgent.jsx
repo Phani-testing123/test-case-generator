@@ -13,7 +13,7 @@ const SignupAgent = () => {
     setError(null);
     setEmails([]);
     try {
-      const resp = await fetch("http://localhost:5000/signup-agent", {
+      const resp = await fetch("https://test-case-backend.onrender.com/signup-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ count }),

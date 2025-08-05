@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "build:css": "postcss src/index.css -o dist/output.css"
+    "build:css": "postcss src/index.css -o dist/output.css",
+    "postinstall": "playwright install"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.57.0",
