@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "build:css": "postcss src/index.css -o dist/output.css",
+    "start": "apt-get update && apt-get install -y libgtk-4-1 libgraphene-1.0-0 && node server.js",
     "postinstall": "playwright install"
   },
   "dependencies": {

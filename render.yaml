@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: test-case-backend
+    env: node
+    rootDir: test-case-backend
+    buildCommand: |
+      apt-get update
+      apt-get install -y libgtk-4-1 libgraphene-1.0-0
+      npm install
+      npx playwright install
+    startCommand: node server.cjs
