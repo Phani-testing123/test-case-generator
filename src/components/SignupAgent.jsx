@@ -108,7 +108,7 @@ const SignupAgent = () => {
                   <span className="truncate text-base text-white">{email}</span>
                   <button
                     onClick={() => handleCopy(email)}
-                    className="ml-3 text-gray-300 hover:text-green-400 transition text-xl opacity-0 group-hover:opacity-100"
+                    className="ml-3 text-gray-300 hover:text-green-400 transition text-xl"
                     title="Copy email"
                   >📋</button>
                 </li>
