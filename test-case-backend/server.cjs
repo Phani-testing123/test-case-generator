@@ -166,9 +166,15 @@ app.post('/signup-agent', async (req, res) => {
 
     res.json({ success: true, emails });
   } catch (err) {
+    // 1. Log the full technical error for developers in the Render logs
     console.error('Signup agent failed:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
+    
+    // 2. Send a single, user-friendly error message to the frontend
+    res.status(500).json({ 
+        success: false, 
+        error: "The automation agent failed. This could be due to a change in the website's UI or a network timeout. Please check the server logs for details." 
+    });
+}
 });
 
 // --- Playwright AI Code ---

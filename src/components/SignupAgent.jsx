@@ -41,12 +41,14 @@ const SignupAgent = () => {
     <>
       {/* Floating Action Button */}
       <button
-        className="fixed bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white w-16 h-16 rounded-full shadow-xl flex items-center justify-center z-50 transition-all"
+        className="fixed bottom-8 right-8 bg-green-600 hover:bg-green-700 text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center z-50 transition-all"
         title="Signup Agent"
         onClick={() => setOpen(true)}
-        style={{ fontSize: 32 }}
       >
-        <span role="img" aria-label="User Add">+</span>
+        {/* ✅ FIXED: Replaced text '+' with a perfectly centered SVG icon */}
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
+        </svg>
       </button>
 
       {/* Drawer */}
@@ -106,22 +108,23 @@ const SignupAgent = () => {
                   <span className="truncate text-base text-white">{email}</span>
                   <button
                     onClick={() => handleCopy(email)}
-                    className="ml-3 text-gray-300 hover:text-green-400 transition text-xl"
+                    className="ml-3 text-gray-300 hover:text-green-400 transition text-xl opacity-0 group-hover:opacity-100"
                     title="Copy email"
                   >📋</button>
-
-                  {showToast && (
-  <div className="fixed left-1/2 bottom-8 z-50 transform -translate-x-1/2 bg-green-600 text-white rounded-lg px-4 py-2 shadow-lg text-sm">
-    Copied to clipboard!
-  </div>
-)}
-
                 </li>
               ))}
             </ul>
           </div>
         )}
       </div>
+      
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed left-1/2 bottom-8 z-50 transform -translate-x-1/2 bg-green-600 text-white rounded-lg px-4 py-2 shadow-lg text-sm">
+          Copied to clipboard!
+        </div>
+      )}
+
       {/* Drawer Overlay */}
       {open && (
         <div
