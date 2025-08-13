@@ -6,7 +6,13 @@ const OpenAI = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Anthropic = require('@anthropic-ai/sdk');
 
-dotenv.config();
+
+
+// --- THIS IS THE CRUCIAL FIX ---
+// Only run dotenv.config() in a non-production environment
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -20,7 +26,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use(express.json());
-
+const REDIS_URL = "redis://red-d29m3t2li9vc73ftd970:6379";
 
 const queueConnection = { connection: process.env.REDIS_URL };
 
@@ -79,7 +85,7 @@ Only output the code for the Playwright test function. Do not explain your answe
     `;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o', // Or gpt-3.5-turbo if you wish
+      model: 'gpt-5', // Or gpt-3.5-turbo if you wish
       messages: [{ role: 'user', content: prompt }]
     });
 
@@ -98,7 +104,7 @@ app.post('/generate-test-cases', async (req, res) => {
     if (!input) return res.status(400).json({ error: 'Input is required' });
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-5',
       messages: [{
         role: 'user',
         content: input
