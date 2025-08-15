@@ -124,7 +124,7 @@ const SignupAgent = () => {
             id="count"
             type="number"
             min={1}
-            max={10}
+            max={3}
             value={count}
             onChange={e => setCount(Number(e.target.value))}
             className="text-black rounded px-2 py-1 w-14 text-base font-semibold"
